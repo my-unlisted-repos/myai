@@ -651,13 +651,13 @@ class _Plot:
 
     def ticks(
         self,
-        xmajor=True,
-        ymajor=True,
+        xmajor: bool | None = True,
+        ymajor: bool | None = True,
         xminor: int | None | Literal["auto"] = "auto",
         yminor: int | None | Literal["auto"] = "auto",
     ):
-        if xmajor: self.ax.xaxis.set_major_locator(AutoLocator())
-        if ymajor: self.ax.yaxis.set_major_locator(AutoLocator())
+        if xmajor is not None and xmajor: self.ax.xaxis.set_major_locator(AutoLocator())
+        if ymajor is not None and xmajor: self.ax.yaxis.set_major_locator(AutoLocator())
         if xminor is not None: self.ax.xaxis.set_minor_locator(AutoMinorLocator(xminor)) # type:ignore
         if yminor is not None: self.ax.yaxis.set_minor_locator(AutoMinorLocator(yminor)) # type:ignore
         return self
@@ -721,14 +721,18 @@ class _Plot:
         yscale = None,
         xlim = None,
         ylim = None,
+        ticks = None,
+        grid = None,
     ):
         if xlim is not None: self.xlim(xlim)
         if ylim is not None: self.ylim(ylim)
         if xscale is not None: self.xscale(xscale)
         if yscale is not None: self.yscale(yscale)
 
-        if preset == 'plot':
-            self.ticks().grid()
+        if (ticks is None and preset == 'plot') or ticks:
+            self.ticks()
+        if (grid is None and preset == 'plot') or grid:
+            self.grid()
 
         elif preset == 'image':
             if xlabel is None and ylabel is None:

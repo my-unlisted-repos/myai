@@ -1,10 +1,9 @@
 import torch
 from torch.optim import Optimizer
 
-class BanachNeumannOptimizer(Optimizer):
+class BanachNeumann(Optimizer):
     """
-    Implements the Banach Neumann Optimizer (BNO), leveraging Neumann series
-    approximations from Banach algebras for adaptive gradient scaling.
+    adaptive gradient scaling.
 
     Args:
         params (iterable): iterable of parameters to optimize or dicts defining parameter groups

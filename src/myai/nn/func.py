@@ -39,6 +39,7 @@ def func_to_named_module(func:Callable, name:str | None = None) -> nn.Module:
 
 
 def ensure_module(x, named=True) -> nn.Module:
+    if isinstance(x, str): raise TypeError(f"ensure module got string {x}")
     if isinstance(x, nn.Module): return x
     if isinstance(x, Callable):
         if named: return func_to_named_module(x)

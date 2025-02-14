@@ -165,6 +165,7 @@ class Fig:
         ncols: int | float | None = None,
         figure: "Figure | _Plot | Fig | None" = None,
         figsize: float | tuple[float, float] | None = None,
+        axsize: float | tuple[float, float] | None = None,
         dpi: float | None = None,
         facecolor: T.Any | None = None,
         edgecolor: T.Any | None = None,
@@ -198,6 +199,10 @@ class Fig:
         # create the figure if it is None
         if isinstance(figsize, (int,float)): figsize = (figsize, figsize)
         if isinstance(figure, (_Plot | Fig)): figure = figure.figure
+
+        if axsize is not None:
+            if isinstance(axsize, (int,float)): axsize = (axsize, axsize)
+            figsize = (ncols*axsize[0], nrows*axsize[1])
 
         if figure is None:
             self.figure = plt.figure(
@@ -239,6 +244,7 @@ class Fig:
         ncols: int | float | None = None,
         figure: "Figure | _Plot | Fig | None" = None,
         figsize: float | tuple[float, float] | None = None,
+        axsize: float | tuple[float, float] | None = None,
         dpi: float | None = None,
         facecolor: T.Any | None = None,
         edgecolor: T.Any | None = None,

@@ -26,7 +26,7 @@ def performance_tweaks(
     # Running float32 matrix multiplications in lower precision may significantly increase performance,
     # and in some programs the loss of precision has a negligible impact.
     # (default is "highest")
-    if float32_matmul_precision: torch.set_float32_matmul_precision(float32_matmul_precision)
+    if float32_matmul_precision is not None: torch.set_float32_matmul_precision(float32_matmul_precision)
 
     # operator-fusion (only for TorchScript inference)
     if onednn_fusion is not None: torch.jit.enable_onednn_fusion(onednn_fusion)
