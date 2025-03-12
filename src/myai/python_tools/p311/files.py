@@ -113,3 +113,18 @@ def get_first_file(path: str) -> str:
         except FileNotFoundError: pass
 
     raise RuntimeError(f"Something went wrong, {path = }, {children = }, {folders = }")
+
+
+def split_path(path):
+    """splits path into components, the safe way"""
+    folders = []
+    head = path
+    while True:
+        head, tail = os.path.split(head)
+        if tail != "": folders.append(tail)
+        else:
+            if head != "": folders.append(head)
+            break
+
+    folders.reverse()
+    return folders
