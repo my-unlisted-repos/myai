@@ -7,3 +7,6 @@ from .func import ensure_module
 from .linear import Linear, LinearBlock
 from .norm import batchnormnd
 from .pool import avgpoolnd, maxpoolnd
+
+
+from .layers import *

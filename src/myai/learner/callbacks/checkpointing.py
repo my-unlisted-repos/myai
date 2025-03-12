@@ -112,6 +112,7 @@ class CheckpointBest(Callback):
         root="runs",
         in_epoch_dir=True,
         min_epoch = 0,
+        delete_old = True,
         cleanup=True,
     ):
         super().__init__()
@@ -131,6 +132,7 @@ class CheckpointBest(Callback):
         self.root = root
         self.in_epoch_dir = in_epoch_dir
         self.min_epoch = min_epoch
+        self.delete_old = delete_old
         self.cleanup = cleanup
 
     def _get_dir(self, learner: "Learner"):
@@ -160,12 +162,13 @@ class CheckpointBest(Callback):
 
 
             # clean up dirs that are not last dirs of any metric
-            used_dirs = set(self.last_dirs.values())
-            for dir in self.all_dirs.copy():
-                if dir not in used_dirs:
-                    if os.path.isdir(dir):
-                        shutil.rmtree(dir)
-                    self.all_dirs.remove(dir)
+            if self.delete_old:
+                used_dirs = set(self.last_dirs.values())
+                for dir in self.all_dirs.copy():
+                    if dir not in used_dirs:
+                        if os.path.isdir(dir):
+                            shutil.rmtree(dir)
+                        self.all_dirs.remove(dir)
 
         if self.cleanup: _clean(learner, self.root)
 

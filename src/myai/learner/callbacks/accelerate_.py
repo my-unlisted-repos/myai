@@ -17,7 +17,6 @@ class Accelerate(Callback):
 
     def enter(self, learner: "Learner"):
         learner.accelerator = self.accelerator
-        learner.device = self.accelerator.device
 
     def before_fit(self, learner: "Learner"):
         (

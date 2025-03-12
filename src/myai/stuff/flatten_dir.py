@@ -1,5 +1,6 @@
 import os
 import shutil
+from collections import OrderedDict
 from collections.abc import Callable, Sequence
 
 from ..python_tools import get_all_files
@@ -151,3 +152,77 @@ def flatten_dir(
         with open(os.path.join(outdir, name), 'w', encoding = 'utf8') as file:
             if t is None: t = read(f)
             file.write(t)
+
+def flatten_dir_flat(
+    root: str,
+    outdir: str,
+    extensions: str | Sequence[str] | None = None,
+    path_filter: Callable[[str], bool] | None = None,
+    text_filter: Callable[[str], bool] | None = None,
+    sep: str | None = ".",
+    ext_override: str | None = None,
+    combine_small: int | None = None,
+    mkdir = True
+):
+    def read(f):
+        try:
+            with open(f, 'r', encoding='utf8') as file: return file.read()
+        except UnicodeDecodeError:
+            print(f)
+            with open(f, 'r', encoding='Windows-1252') as file: return file.read()
+
+    files = get_all_files(root, extensions=extensions, path_filter=path_filter)
+    files_content: OrderedDict[tuple[str, ...], str] = OrderedDict(sorted([((path,), read(path)) for path in files], key = lambda x: len(x[1])))
+
+    if text_filter is not None:
+        files_content = OrderedDict([(k,v) for k, v in files_content.items() if text_filter(v)])
+
+    if combine_small is None: combine_small = 999999999
+    while len(files_content) > combine_small:
+        key1  =list(files_content.keys())[0]
+        key2 = list(files_content.keys())[1]
+        text1 = files_content.pop(key1)
+        text2 = files_content.pop(key2)
+
+        files_content[key1 + key2] = f'#-----------------{key1}-------------\n{text1}\n\n#-----------------{key2}-------------\n{text2}'
+
+
+    if mkdir and not os.path.exists(outdir): os.mkdir(outdir)
+
+    def override(fname):
+        if '.' in fname: fname = '.'.join(fname.split('.')[:-1])
+        fname = f'{fname}.{ext_override}'
+        return fname
+
+    saved_fnames = set()
+    if sep is None: sep = ''
+    for files, text in files_content.items():
+        fnames = [os.path.basename(i) for i in files]
+
+        def remove_ext(fname):
+            if '.' in fname: return  '.'.join(fname.split('.')[:-1])
+            return fname
+
+        if len(fnames) > 1:
+            fnames = list(map(remove_ext, fnames[:-1])) + [fnames[-1]]
+
+        while sum(map(len, fnames)) > 200:
+            if len((fnames)) >= 199: fnames = fnames[:199]
+            longest_fname = sorted(fnames, key=len)[-1]
+            fnames[fnames.index(longest_fname)] = fnames[fnames.index(longest_fname)][:-1]
+
+        filename = sep.join(fnames)
+        i = 1
+        while filename in saved_fnames:
+            i+=1
+            b = filename
+            filename = f'{filename} ({i})'
+            if filename in saved_fnames: filename = b
+
+        if ext_override is not None:
+            filename = override(filename)
+
+        saved_fnames.add(filename)
+        with open(os.path.join(outdir, filename), 'w', encoding='utf8') as f:
+            f.write(text)
+

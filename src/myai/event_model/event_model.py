@@ -140,7 +140,7 @@ class EventModel:
         return ret
 
     @contextmanager
-    def context(self, name: str, after: tuple | tuple[str]=(), catch = ()):
+    def context(self, name: str, after: tuple | tuple[str]=(), catch = (), on_cancel: tuple | tuple[str] = (), on_catch: tuple | tuple[str] = (), on_success: tuple | tuple[str] = ()):
         """Run a context that can be cancelled by raising CancelContext(name).
 
         :param name: Name of the context.
@@ -151,10 +151,13 @@ class EventModel:
         except CancelContext as e:
             if str(e) != name: raise e
             for event in after: self.fire_event(event)
+            for event in on_cancel: self.fire_event(event)
         except catch:
             for event in after: self.fire_event(event)
+            for event in on_catch: self.fire_event(event)
         else:
             for event in after: self.fire_event(event)
+            for event in on_success: self.fire_event(event)
 
     @contextmanager
     def with_extra_callbacks(self, callbacks: Callback | Iterable[Callback]):

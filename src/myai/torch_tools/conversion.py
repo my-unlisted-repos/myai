@@ -79,6 +79,7 @@ def maybe_detach_cpu_recursive(x):
 
 def ensure_numpy_recursive(x) -> np.ndarray:
     """Converts x to numpy array if it is not already one. If tensor, ensures it is detached and on CPU, RECURSIVELY. Can be slow!"""
+    if isinstance(x, str): raise RuntimeError(f'ensure_numpy_recursive got string "{x}"')
     if isinstance(x, torch.Tensor):
         return x.detach().cpu().numpy()
     if isinstance(x, np.ndarray):

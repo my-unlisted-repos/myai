@@ -38,6 +38,7 @@ from . import python_tools
 from .data import DS
 from .event_model.callback import Callback
 from .event_model.conditional_callback import ConditionalCallback
+from .logger import DictLogger
 
 if sys.version_info[1] >= 12: from .learner import *
 from .loaders.csv_ import csvread, csvwrite

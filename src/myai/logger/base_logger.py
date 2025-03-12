@@ -2,19 +2,19 @@ import logging
 import typing as T
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, Mapping, MutableMapping
+from typing import Any, Literal, Unpack
 
 import numpy as np
 import torch
 
 from ..plt_tools._types import _K_Collection, _K_Line2D
 from ..plt_tools.fig import Fig
-
-
+from ..torch_tools import maybe_ensure_pynumber
 
 def numel(x:np.ndarray | torch.Tensor):
     if isinstance(x, np.ndarray): return x.size
     return x.numel()
-class BaseLogger(MutableMapping[str, T.Any], ABC):
+class BaseLogger(MutableMapping[str, Any], ABC):
 
     @abstractmethod
     def log(self, step: int, metric: str, value: T.Any) -> None:
@@ -26,11 +26,11 @@ class BaseLogger(MutableMapping[str, T.Any], ABC):
     # __getitem__, __setitem__, __delitem__, __iter__, __len__
 
     @abstractmethod
-    def __getitem__(self, metric: str) -> dict[int, T.Any]:
+    def __getitem__(self, metric: str) -> dict[int, Any]:
         """Get a `{step: value}` dict for a given metric."""
 
     @abstractmethod
-    def __setitem__(self, metric: str, value: dict[int, T.Any]) -> None:
+    def __setitem__(self, metric: str, value: dict[int, Any]) -> None:
         """Set a `{step: value}` dict for a given metric."""
 
     @abstractmethod
@@ -48,60 +48,75 @@ class BaseLogger(MutableMapping[str, T.Any], ABC):
     @abstractmethod
     def copy(self): return self
 
+    def set_array(self, metric, x: Any | None, y: Any):
+        """set metric from array"""
+        if x is None: x = list(range(len(y)))
+        self[metric] = dict(zip(x,y))
+
     def first(self, key:str):
-        return self.get_metric_as_list(key)[0]
+        return next(iter(self[key].values()))
 
     def last(self, key:str):
-        return self.get_metric_as_list(key)[-1]
+        return self.list_values(key)[-1]
 
     def min(self, key:str):
-        return np.nanmin(self.get_metric_as_numpy(key))
+        return np.nanmin(self.numpy(key)).item()
 
     def max(self, key:str):
-        return np.nanmax(self.get_metric_as_numpy(key))
+        return np.nanmax(self.numpy(key)).item()
 
     def mean(self, key: str):
-        return np.nanmean(self.get_metric_as_numpy(key))
+        return np.nanmean(self.numpy(key)).item()
 
-    def argmin(self, key:str):
-        idx = np.nanargmin(self.get_metric_as_numpy(key)).item()
+    def argmin(self, key:str) -> int:
+        idx = np.nanargmin(self.numpy(key)).item()
         return self.get_metric_steps(key)[idx]
 
-    def argmax(self, key:str):
-        idx = np.nanargmax(self.get_metric_as_numpy(key)).item()
+    def argmax(self, key:str) -> int:
+        idx = np.nanargmax(self.numpy(key)).item()
         return self.get_metric_steps(key)[idx]
 
-    def get_metric_as_list(self, key: str) -> list[T.Any]:
+    def get_closest(self, key: str, idx: int):
+        """same as logger[key][idx] but returns closest value if idx doesn't exist"""
+        steps = np.asarray(self.list_steps(key))
+        idx = np.abs(steps - idx).argmin().item()
+        return self[key][int(idx)]
+
+    def list_values(self, key: str) -> list[T.Any]:
         """Returns items under `key` as list. Step is ignored."""
         return list(self[key].values())
 
-    def get_metric_as_numpy(self, key: str) -> np.ndarray:
-        """Returns items under `key` as numpy array. Step is ignored."""
-        return np.array(self.get_metric_as_list(key))
+    def list_steps(self, key:str) -> list[int]:
+        return list(self[key].keys())
 
-    def get_metric_as_tensor(self, key: str, dtype = None, device = None) -> torch.Tensor:
+    def numpy(self, key: str, with_steps = False) -> np.ndarray:
+        """Returns items under `key` as numpy array. if with_steps, returns (2, n_values) array where 1st row is steps, 2nd is values."""
+        if with_steps: return np.stack([self.list_steps(key), self.list_values(key)])
+        return np.array(self.list_values(key))
+
+    def tensor(self, key: str, dtype = None, device = None) -> torch.Tensor:
         """Returns items under `key` as tensor. Step is ignored."""
-        return torch.tensor(self.get_metric_as_list(key), dtype=dtype, device=device)
+        return torch.tensor(self.list_values(key), dtype=dtype, device=device)
 
     def get_metric_steps(self, key: str) -> list[int]:
         """Returns steps for a given key."""
         return list(self[key].keys())
 
-    def get_metric_fill_missing(self, key: str, fill: T.Any = np.nan) -> list[T.Any]:
+    def fill_missing(self, key: str, fill: T.Any = np.nan) -> list[T.Any]:
         """Returns a list of values for a given key, filling missing steps with `fill`, so index of each element is it's step."""
         steps = range(self.num_steps())
         existing = self[key]
         return [(existing[step] if step in existing else fill) for step in steps]
 
-    def get_metric_interpolate(self, key: str) -> np.ndarray:
+    def interpolate(self, key: str) -> np.ndarray:
         """Returns a list of values for a given key, interpolating missing steps."""
         steps = range(self.num_steps())
         existing = self[key]
         return np.interp(steps, list(existing.keys()), list(existing.values()))
 
-    def get_shared_metrics(self, *keys:str | None):
+    def shared(self, *keys:str | None):
         """Finds all steps where all `keys` exist, returns lists of values for each key. Non string keys are returned as is."""
-        arr = np.array([self.get_metric_fill_missing(key, np.nan) for key in keys if isinstance(key,str)]).T
+        arr = np.array([self.fill_missing(key, np.nan) for key in keys if isinstance(key,str)]).T
         mask: np.ndarray = np.ma.fix_invalid(arr).mask
         # if there are no nan values, mask will be a 0 ndim array
         if mask.ndim > 1: valid_arr = arr[~mask.any(axis=1)].T
@@ -134,7 +149,7 @@ class BaseLogger(MutableMapping[str, T.Any], ABC):
         for k in self.keys():
             try:
                 arrays[f"__STEPS__ {k}"] = np.asarray(self.get_metric_steps(k))
-                arrays[f"__VALUES__ {k}"] = self.get_metric_as_numpy(k)
+                arrays[f"__VALUES__ {k}"] = self.numpy(k)
             except Exception as e: # pylint:disable=W0718
                 logging.warning("Failed to save `%s`: %s", k, e)
         np.savez_compressed(filepath, **arrays)
@@ -155,7 +170,7 @@ class BaseLogger(MutableMapping[str, T.Any], ABC):
         logger.load(filepath)
         return logger
 
-    def plot(self, *metrics: str, fig = None, **kwargs: T.Unpack[_K_Line2D]):
+    def plot(self, *metrics: str, fig = None, **kwargs: Unpack[_K_Line2D]):
         k: dict[str, T.Any] = kwargs.copy() # type:ignore # this is necesary for pylance to shut up
         if fig is None: fig = Fig()
         #fig.add()
@@ -165,13 +180,33 @@ class BaseLogger(MutableMapping[str, T.Any], ABC):
             y = list(self[metric].values())
             fig.linechart(x, y, label = metric, **k).axlabels('step', ylabel)
         if len(metrics) > 1: fig.legend()
-        return fig.ticks().grid()
+        return fig.grid()
 
-    def linechart(self, x:str, y:str, fig = None, **kwargs: T.Unpack[_K_Line2D]):
-        xvals = self.get_metric_interpolate(x)
-        yvals = self.get_metric_interpolate(y)
+    def linechart(self, x:str | None, y:str, fig = None, method: Literal['shared', 'nan', 'interpolate'] = 'shared', axlabels=True, grid=True, ylim = None, **kwargs: Unpack[_K_Line2D]):
+        if x is None: xvals, yvals = self.list_steps(y), self.list_values(y)
+        elif method == 'shared': xvals, yvals = self.shared(x, y)
+        elif method == 'nan':
+            xvals = self.fill_missing(x)
+            yvals = self.fill_missing(y)
+        elif method == 'interpolate':
+            xvals = self.interpolate(x)
+            yvals = self.interpolate(y)
+        else:
+            raise ValueError(method)
+
         if fig is None: fig = Fig()
-        return fig.linechart(xvals, yvals, **kwargs).axlabels(x, y).ticks().grid()
+
+        if ylim is not None:
+            ymin,ymax = [maybe_ensure_pynumber(i) for i in ylim]
+            yvals = yvals.copy()
+
+            yvals[yvals<ymin] = np.nan
+            yvals[yvals>ymax] = np.nan
+
+        fig.linechart(x=xvals, y=yvals, **kwargs)
+        if axlabels: fig.axlabels(x, y)
+        if grid: fig.grid()
+        return fig
 
     def as_yaml_string(self):
         # TODO potentially make this better or not
@@ -192,7 +227,7 @@ class BaseLogger(MutableMapping[str, T.Any], ABC):
                 text += f"    last std: {last.std()}\n"
                 text += f"    elements: {numel(last)}\n"
             elif isinstance(last, (int, float, np.ScalarType)) or (isinstance(last, (torch.Tensor, np.ndarray)) and numel(last) == 1):
-                values = self.get_metric_as_numpy(key)
+                values = self.numpy(key)
                 text += f"    last value: {float(last)}\n" # type:ignore
                 text += f"    lowest: {values.min()}\n"
                 text += f"    highest: {values.max()}\n"

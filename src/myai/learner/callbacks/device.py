@@ -21,7 +21,6 @@ class Device(Callback):
         self.device = device
 
     def enter(self, learner: 'Learner'):
-        learner.device = self.device
         if isinstance(learner.model, torch.nn.Module): learner.model = learner.model.to(learner.device)
 
     def before_any_batch(self, learner: 'Learner'):

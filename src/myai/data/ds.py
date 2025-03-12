@@ -150,7 +150,7 @@ class DS(abc.Sequence[R]):
         return ds
 
     # def dataloader[D:Callable](self, batch_size: int, shuffle: bool, seed: int | None = None, cls: D = LightDataLoader) -> D:
-    def dataloader(self, batch_size: int, shuffle: bool, seed: int | None = None, cls: X = LightDataLoader) -> X:
+    def dataloader(self, batch_size: int, shuffle: bool, seed: int | None = None, cls: type[X] = LightDataLoader) -> X:
         return cls(self, batch_size = batch_size, shuffle = shuffle, seed=seed)
 
     def stack(self, dtype=None, device=None):

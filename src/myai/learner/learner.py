@@ -78,7 +78,6 @@ class Learner(EventModel):
         optimizer: torch.optim.Optimizer | SaveSignature | T.Any | None = None, # type:ignore
         scheduler: torch.optim.lr_scheduler.LRScheduler | SaveSignature | T.Any | None = None,
 
-        device: T.Any = CUDA_IF_AVAILABLE,
         logger: BaseLogger | None = None,
 
         name: str = '{prefix} {model} {loss_fn} {optimizer}{optimizer.lr} {scheduler} {cbtext} {postfix} - {date_created}',
@@ -93,7 +92,6 @@ class Learner(EventModel):
         """Prefix for the name"""
         self.postfix = ''
         """Postfix for the name"""
-        self.device = device
         self.accelerator: "Accelerator | T.Any" = None
         if logger is None: logger = DictLogger()
         self.logger: BaseLogger = logger
@@ -143,6 +141,9 @@ class Learner(EventModel):
         if scheduler is not None:
             self.add_callback(_scheduler_cb(scheduler))
 
+    @property
+    def device(self):
+        return next(iter(self.model.parameters())).device
 
     def _set_x_cls[**P](self, attr: str, x: abc.Callable[P, T.Any], *args: P.args, **kwargs: P.kwargs):
         """sets `self.attr = x(*args, **kwargs)` and saves args and kwargs into `self.info`."""
@@ -239,6 +240,10 @@ class Learner(EventModel):
         # get from self.info
         if base in self.info:
             if attr is None:
+                # print(f'{s = }')
+                # print(f'{base = }')
+                # print(f'{self.info = }')
+                # print(f'{self.info[base] = }')
                 if '__repr__' in self.info[base]: return str(self.info[base]['__repr__'])
                 if '__class__' in self.info[base]: return str(self.info[base]['__class__'])
                 if '__constructor__' in self.info[base]: return str(self.info[base]['__constructor__'])
@@ -455,7 +460,11 @@ class Learner(EventModel):
 
     def load(self, dir: str):
         files = set(os.listdir(dir))
-        if 'info.yaml' in files: self.info = yamlread(os.path.join(dir, 'info.yaml'))
+        if 'info.yaml' in files:
+            self.info = yamlread(os.path.join(dir, 'info.yaml'))
+            for k in ('cur_batch', 'cur_epoch', 'total_batches', 'total_epochs', 'num_forwards', 'num_backwards'):
+                del self.info[k]
+
         if 'logger.npz' in files: self.logger.load(os.path.join(dir, 'logger.npz'))
 
         # load attrs like cur_batch
@@ -463,15 +472,19 @@ class Learner(EventModel):
             learner_attrs: dict[str, T.Any] = torch.load(os.path.join(dir, 'learner_attrs.state_dict'), weights_only = False)
             for k, v in learner_attrs.items():
                 if 'object' in v:
-                    setattr(self, k, v['object'])
+                    if k != 'device': # TODO TEMPORARY BECAUSE I HCANGED DEVICE INTO PROPERTY
+                        setattr(self, k, v['object'])
 
         # load state_dicts
         for file in files:
-            if file.endswith('.state_dict'):
+            if file.endswith('.state_dict') and file != 'learner_attrs.state_dict':
                 attr_name = file.replace('.state_dict', '')
-                attr = getattr(self, attr_name)
-                try: attr.load_state_dict(torch.load(os.path.join(dir, file), weights_only = False), )
+                try:
+                    attr = getattr(self, attr_name)
+                    attr.load_state_dict(torch.load(os.path.join(dir, file), weights_only = False), )
                 except Exception as e: warnings.warn(f"Failed to load state dict for {attr_name}: {e!r}")
+
+        return self
 
     @property
     def training(self):
@@ -574,8 +587,6 @@ class Learner(EventModel):
             # they can be replaced by other callbacks that are used
             # in the middle of training, and we don't want fit callback to break
                 self.fire_event('fit', dltrain = self.dltrain, epochs_iterator = self.epochs_iterator, )
-        except tuple(self.catch):
-            self.fire_event('on_fit_exception')
         except Exception as e:
             self.fire_event('on_fit_exception')
             raise e

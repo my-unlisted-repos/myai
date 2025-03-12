@@ -8,6 +8,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.ticker import AutoLocator, AutoMinorLocator
 from torchvision.utils import make_grid
+from scipy.ndimage import gaussian_filter1d
 
 from ..python_tools import (
     func2func,
@@ -146,9 +147,11 @@ class _Plot:
         y=None,
         scalex=True,
         scaley=True,
+        smooth = None,
         **line_kwargs: Unpack[_K_Line2D],
     ):
         x, y = _prepare_data_for_plotting(*data, x=x, y=y, ensure_x=False)
+        if smooth is not None and smooth != 0: y = gaussian_filter1d(y, smooth, mode='nearest')
         if x is None: self.ax.plot(y, scalex=scalex, scaley=scaley, **line_kwargs)
         else: self.ax.plot(x, y, scalex=scalex, scaley=scaley, **line_kwargs)
         return self
@@ -721,7 +724,6 @@ class _Plot:
         yscale = None,
         xlim = None,
         ylim = None,
-        ticks = None,
         grid = None,
     ):
         if xlim is not None: self.xlim(xlim)
@@ -729,8 +731,6 @@ class _Plot:
         if xscale is not None: self.xscale(xscale)
         if yscale is not None: self.yscale(yscale)
 
-        if (ticks is None and preset == 'plot') or ticks:
-            self.ticks()
         if (grid is None and preset == 'plot') or grid:
             self.grid()
 

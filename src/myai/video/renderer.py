@@ -26,12 +26,18 @@ class OpenCVRenderer:
         outfile,
         fps = 60,
         codec="mp4v",
+        scale: int | float = 1,
     ):
-        """Create a video renderer.
+        """_summary_
 
-        :param outfile: Path to the file to write the video to. The file will be created when first frame is added.
-        :param fps: Frames per second.
-        :param codec: Video codec, default is 'mp4v'
+        Args:
+            outfile (str): path to the file to write the video to. The file will be created when first frame is added
+            fps (int, optional): frames per second. Defaults to 60.
+            codec (str, optional): codec. Defaults to "mp4v".
+            scale (int, optional): rescale frames. Scale needs to be integer, 1/scale needs to be an integer. Defaults to 1.
+
+        Raises:
+            ValueError: _description_
         """
         if fps < 1: raise ValueError(f"FPS must be at least 1, got {fps}")
         if not outfile.lower().endswith(".mp4"):
@@ -40,6 +46,7 @@ class OpenCVRenderer:
         self.outfile = outfile
         self.fps = fps
         self.codec = codec
+        self.scale = scale
 
         self.writer = None
 
@@ -50,8 +57,13 @@ class OpenCVRenderer:
         :param frame: Frame in np.uint8 data type.
         :raises ValueError: If frame shape is different from the previous one.
         """
-        # make sure it is hw3
-        frame = tonumpy(force_hw3(frame))[:,:,::-1]
+        # make sure it is hw3 and scale it
+        if self.scale == 1: frame = tonumpy(force_hw3(frame))[:,:,::-1]
+        elif self.scale > 1:
+            frame = np.repeat(np.repeat(tonumpy(force_hw3(frame))[:,:,::-1], int(self.scale), 0), int(self.scale), 1)
+        else:
+            skip = round(1/self.scale)
+            frame = tonumpy(force_hw3(frame))[::skip,::skip,::-1]
 
         # on first frame create writer and use frame shape as video size
         if self.writer is None:

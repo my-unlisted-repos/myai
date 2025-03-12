@@ -7,7 +7,7 @@ from collections import abc
 import numpy as np
 import torch
 from fastprogress import master_bar, progress_bar
-from scipy.signal import convolve
+from scipy.ndimage import gaussian_filter1d
 from ...event_model import Callback
 
 if T.TYPE_CHECKING:
@@ -20,8 +20,8 @@ class FastProgress(Callback):
     def __init__(
         self,
         metrics: str | abc.Iterable[str] = ("train loss", "test loss"),
-        bar_sec: float = 1,
-        plot_sec: float = 10,
+        bar_sec: float = 0.1,
+        plot_sec: float = 30,
         ybounds: tuple[float | None, float | None] | abc.Sequence[float | None] | None = None,
         smooth: abc.Mapping[str, int] | None | abc.Sequence[int | None] = None,
     ):
@@ -58,7 +58,7 @@ class FastProgress(Callback):
                     y = np.array(list(learner.logger[name].values()))
                     # only smooth when it is long enough
                     if smooth_length * 2 < len(y):
-                        convolved = convolve(y, np.ones(self.smooth[name]) / self.smooth[name], mode="same")
+                        convolved = gaussian_filter1d(y, self.smooth[name], mode="nearest", truncate = 4)
                         y[smooth_length:-smooth_length] = convolved[smooth_length:-smooth_length]
                     graphs.append([list(learner.logger[name].keys()), y])
 

@@ -5,7 +5,7 @@ import typing as T
 import warnings
 from abc import ABC, abstractmethod
 from collections import abc
-from collections.abc import Iterator, Mapping, MutableMapping
+from collections.abc import Iterator, Mapping, MutableMapping, Callable, Sequence
 
 import numpy as np
 import torch
@@ -73,6 +73,13 @@ class Comparison:
 
         self.loggers.update(loggers)
 
+    def filter(self, filt: str | Callable | Sequence[str]):
+        if isinstance(filt, str): return Comparison({k:v for k,v in self.loggers.items() if filt in k})
+        if isinstance(filt, Sequence):
+            return Comparison({k:v for k,v in self.loggers.items() if any(i in k for i in filt)})
+
+        return Comparison({k:v for k,v in self.loggers.items() if filt(k)})
+
     @classmethod
     def from_runs_dir(cls, dir:str):
         comparison = cls({})
@@ -85,7 +92,7 @@ class Comparison:
         if last: caller = operator.methodcaller('last', metric)
         else: caller = operator.methodcaller('max', metric)
 
-        max_values = sorted([(k, caller(v)) for k,v in self.loggers.items()], key = lambda x:x[1], reverse=True)
+        max_values = sorted([(k, caller(v)) for k,v in self.loggers.items() if metric in v], key = lambda x:x[1], reverse=True)
         return Comparison({k:self.loggers[k] for k,_ in max_values[:n]})
 
     def n_lowest(self, metric, n: int, last = False):
@@ -116,7 +123,7 @@ class Comparison:
                     xlabel, ylabel = 'step', metric
                 else:
                     xlabel, ylabel = x, metric
-                    xvals, yvals = logger.get_shared_metrics(x, metric)
+                    xvals, yvals = logger.shared(x, metric)
 
                 fig.linechart(xvals, yvals, label = name, **k)
         return fig.axlabels(xlabel, ylabel).legend().ticks().grid()
@@ -131,8 +138,8 @@ class Comparison:
             if x not in logger or y not in logger:
                 logging.warning('%s or %s is not in %s', x, y, name)
             else:
-                xvals = logger.get_metric_interpolate(x)
-                yvals = logger.get_metric_interpolate(y)
+                xvals = logger.interpolate(x)
+                yvals = logger.interpolate(y)
 
                 fig.linechart(xvals, yvals, label = name, **k)
         return fig.axlabels(x, y).legend().ticks().grid()

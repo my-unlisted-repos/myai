@@ -82,9 +82,7 @@ class SaveSignature[V]:
                 self.signature[k] = v.resolve()
         self.constructed_obj: _NotConstructed | V = _NotConstructed() # pylint:disable=undefined-variable
 
-    def resolve(self) -> V: # pylint:disable=undefined-variable
-        if self.is_constructed: return self.constructed_obj # type:ignore
-
+    def get_args_kwargs(self):
         # make sure *arg only arguments are passed as args
         full_argspec = inspect.getfullargspec(self.obj)
         args = []
@@ -104,6 +102,11 @@ class SaveSignature[V]:
                     args.append(v)
                     del kwargs[k]
 
+        return args, kwargs
+
+    def resolve(self) -> V: # pylint:disable=undefined-variable
+        if self.is_constructed: return self.constructed_obj # type:ignore
+        args, kwargs = self.get_args_kwargs()
         self.constructed_obj = self.obj(*args, **kwargs)
         return self.constructed_obj
 
