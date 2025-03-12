@@ -27,7 +27,10 @@ class DiagLinear(tz.core.TensorListOptimizer):
 
         # difference normalized by difference between parameters
         if self.y == 'grad': y_diff = g1 - g2
-        else: y_diff = l1 - l2
+        elif self.y == 'loss': y_diff = l1 - l2
+        elif self.y == 'sum': y_diff = (g1 + l1) - (g2 + l2)
+        elif self.y == 'prod': y_diff = (g1 * l1) - (g2 * l2)
+        else: raise ValueError(self.y)
         diff = y_diff / (p1 - p2)
 
         # solve
@@ -44,7 +47,15 @@ class DiagQuadratic(tz.core.TensorListOptimizer):
     """3 closure evaluations per step, evaluates 3 parameters/gradients and fits and minimizes quadratic,
     should converge quickly only on convex funcs with diagonal hessian otherwise it isn't guaranteed to work!
     Also I don't know what this method is actually called. This is like brent method for multiple dimensions."""
-    def __init__(self, params, lr = 1e-3, y = 'grad', allow_negative_curvature = True, min_a = 1e-8):
+    def __init__(
+        self,
+        params,
+        lr = 1e-3,
+        y = 'grad',
+        allow_negative_curvature = True,
+        min_a = 1e-8,
+
+    ):
         defaults = dict(lr = lr)
         self.min_a = min_a
         super().__init__(params, defaults)
@@ -75,6 +86,12 @@ class DiagQuadratic(tz.core.TensorListOptimizer):
 
         if self.y == 'loss':
             g1 = l1; g2 = l2; g3 = l3
+        elif self.y == 'sum':
+            g1 = g1+l1; g2=g2+l2; g3=g3+l3
+        elif self.y == 'prod':
+            g1 = g1*l1; g2=g2*l2; g3=g3*l3
+        else:
+            raise ValueError(self.y)
 
         # fit quadratic
         a = (p1*(g3-g2) + p2*(g1-g3) + p3*(g2-g1)) / ((p1-p2) * (p1 - p3) * (p2 - p3))

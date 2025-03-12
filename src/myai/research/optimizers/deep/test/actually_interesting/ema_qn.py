@@ -90,7 +90,7 @@ class EMAQN(Optimizer):
                     growth = norm / self.prev_norm
                     if growth > self.norm_growth_bound:
                         d /= growth / self.norm_growth_bound
-                        self.prev_norm = self.prev_norm * self.norm_growth_bound
+                        self.prev_norm = (self.prev_norm * self.norm_growth_bound) + 1e-4
                     else:
                         self.prev_norm = norm
 
