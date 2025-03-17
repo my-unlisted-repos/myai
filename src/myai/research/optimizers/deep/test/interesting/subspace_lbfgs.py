@@ -88,6 +88,7 @@ class RandomSubspaceLBFGS(Optimizer):
 
         return r
 
+    @torch.no_grad
     def step(self, closure=None):
         """Performs a single optimization step.
 
@@ -167,13 +168,15 @@ class RandomSubspaceLBFGS(Optimizer):
             # 5. Lift update to full space
             full_space_update_direction = self._lift_update_to_full_space(self.subspace_update_direction, state['subspace_basis'])
 
+            if state['step_count'] == 0:
+                full_space_update_direction *= 1e-4
 
             # 6. Apply update
             param_idx = 0
             for p in params_with_grad:
                 numel = p.numel()
                 update_chunk = full_space_update_direction[param_idx:param_idx + numel].reshape(p.shape)
-                p.data.add_(update_chunk)
+                p.add_(update_chunk)
                 param_idx += numel
 
 
@@ -184,7 +187,7 @@ class RandomSubspaceLBFGS(Optimizer):
                 for p in params_with_grad:
                     numel = p.numel()
                     update_chunk = full_space_grad_update[param_idx:param_idx + numel].reshape(p.shape)
-                    p.data.add_(update_chunk)
+                    p.add_(update_chunk)
                     param_idx += numel
 
 

@@ -59,9 +59,9 @@ class BrentTrustRegion(Optimizer):
                     for i in range(len(state['param_history']) - 1):
                         s = state['param_history'][i+1] - state['param_history'][i]
                         y = state['grad_history'][i+1] - state['grad_history'][i]
-                        s_list.append(s)
-                        y_list.append(y)
-                    qn_step = self.lbfgs_two_loop(grad, s_list, y_list, eps)
+                        s_list.append(s.view(-1))
+                        y_list.append(y.view(-1))
+                    qn_step = self.lbfgs_two_loop(grad, s_list, y_list, eps).view_as(p)
 
                 # Choose step
                 if qn_step is not None:
@@ -71,7 +71,7 @@ class BrentTrustRegion(Optimizer):
                     if qn_norm > trust_radius:
                         qn_step = qn_step * (trust_radius / qn_norm)
                     # Predict reduction
-                    grad_dot = torch.dot(grad, qn_step)
+                    grad_dot = torch.dot(grad.view(-1), qn_step.view(-1))
                     hessian_term = sum(torch.dot(yi, si) / (torch.dot(si, si) + eps) for si, yi in zip(s_list, y_list))
                     pred_red = grad_dot + 0.5 * hessian_term * grad_dot
                     if pred_red < 0:
@@ -86,7 +86,7 @@ class BrentTrustRegion(Optimizer):
         return loss
 
     def lbfgs_two_loop(self, grad, s_list, y_list, eps):
-        q = grad.clone()
+        q = grad.clone().view(-1)
         alpha_list = []
         for s, y in zip(reversed(s_list), reversed(y_list)):
             rho = 1.0 / (torch.dot(y, s) + eps)

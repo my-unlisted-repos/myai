@@ -5,7 +5,7 @@ from torch.optim import Optimizer
 
 
 class StochasticSpectralPreconditioning(Optimizer):
-    def __init__(self, params, tau=2, alpha=0.1, eta=0.01, lr=0.1):
+    def __init__(self, params, lr=0.1, tau=2, alpha=0.1, eta=0.01, ):
         defaults = dict(tau=tau, alpha=alpha, eta=eta, lr=lr)
         super().__init__(params, defaults)
 
@@ -42,6 +42,7 @@ class StochasticSpectralPreconditioning(Optimizer):
                 g = p.grad.data
                 shape = p.shape
                 g_flat = g.view(-1).detach()
+                tau = min(tau, g_flat.numel())
 
                 # Online covariance approximation and power iteration
                 with torch.no_grad():

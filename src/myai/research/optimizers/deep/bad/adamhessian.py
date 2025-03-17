@@ -2,8 +2,9 @@ import torch
 from torch.optim import Optimizer
 
 class AdamHessian(Optimizer):
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8):
-        defaults = dict(lr=lr, betas=betas, eps=eps)
+    """very unstable and basically useless"""
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, normalize=False):
+        defaults = dict(lr=lr, betas=betas, eps=eps, normalize=normalize)
         super().__init__(params, defaults)
 
     @torch.no_grad
@@ -20,21 +21,21 @@ class AdamHessian(Optimizer):
             for p in group['params']:
                 if p.grad is None:
                     continue
-                grad = p.grad.data
+                grad = p.grad
 
                 state = self.state[p]
 
                 # Initialize state if not present
                 if len(state) == 0:
                     state['step'] = 0
-                    state['m'] = torch.zeros_like(p.data)
-                    state['h_ema'] = torch.zeros_like(p.data)
-                    state['theta_prev'] = p.data.clone()
+                    state['m'] = torch.zeros_like(p)
+                    state['h_ema'] = torch.zeros_like(p)
+                    state['theta_prev'] = p.clone()
                     state['g_prev'] = grad.clone()
                     p.sub_(p.grad * lr*1e-3)
                 else:
                     # Compute s and y for Hessian estimate
-                    theta_prev_current = p.data.clone()
+                    theta_prev_current = p.clone()
                     s = theta_prev_current - state['theta_prev']
                     y = grad - state['g_prev']
 
@@ -45,14 +46,14 @@ class AdamHessian(Optimizer):
                     state['h_ema'] = torch.addcmul(
                         state['h_ema'] * beta2,
                         h_t,
-                        torch.tensor(1 - beta2, dtype=torch.float32)
+                        torch.tensor(1 - beta2, dtype=torch.float32, device=p.device)
                     )
 
                     # Update first moment (gradient EMA)
                     state['m'] = torch.addcmul(
                         state['m'] * beta1,
                         grad,
-                        torch.tensor(1 - beta1, dtype=torch.float32)
+                        torch.tensor(1 - beta1, dtype=torch.float32, device=p.device)
                     )
 
                     state['step'] += 1
@@ -68,7 +69,8 @@ class AdamHessian(Optimizer):
                     update = m_hat / denom
 
                     # Apply update
-                    p.data.add_(-lr * update)
+                    if group['normalize']: update /= (torch.linalg.vector_norm(update) + 1e-8)
+                    p.add_(-lr * update)
 
                     # Save current parameters and gradients for next step
                     state['theta_prev'].copy_(theta_prev_current)

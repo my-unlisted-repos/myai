@@ -104,7 +104,7 @@ class ArnoldiGD(Optimizer):
                 y = torch.linalg.solve(A, b) # Solve (Hm + lambda_reg*I)y = -||g||e1
                 update_direction = Qm @ y #  d = Q_m @ y
             except RuntimeError as e: # Handle potential linear solver issues (e.g., singular matrix)
-                print(f"Linear Solver Warning: {e}. Falling back to projected gradient.")
+                # print(f"Linear Solver Warning: {e}. Falling back to projected gradient.")
                 update_direction = Qm @ (Qm.T @ grad_vec) # Fallback: project gradient
 
             # 3. Parameter Update

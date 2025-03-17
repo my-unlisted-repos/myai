@@ -1,4 +1,4 @@
-"""Adam but it uses a little bit more of the covariance matrix"""
+"""Adam with little bit more of the covariance matrix"""
 from typing import Literal
 import torch
 from torch.optim import Optimizer
@@ -17,16 +17,16 @@ def solve_tridiagonal_cg(diag:torch.Tensor, off_diag:torch.Tensor, v:torch.Tenso
     solves Ax = v for a symmetric tridiagonal matrix A with conjugate gradient.
 
     Args:
-        diag (torch.Tensor): diagonal vector of A (shape N).
-        off_diag (torch.Tensor): off-diagonal vector of A (shape N-1).
-        v (torch.Tensor): right-hand side vector (shape N).
+        diag (torch.Tensor): diagonal entries of A of shape (n,).
+        off_diagonal (torch.Tensor): off-diagonal entries of A of shape (n-1,).
+        v (torch.Tensor): input vector of shape (n,).
         x_init (torch.Tensor, optional): initial guess for the solution x. Defaults to None (zeros).
         iters (int | None, optional): maximum number of iterations (defaults to N).
         tol (float): tolerance for convergence (stopping criterion based on residual norm).
         jacobi (bool): whether to use jacobi preconditioning (it helps a little).
 
     Returns:
-        torch.Tensor: Approximated solution x.
+        torch.Tensor: approximate solution x (shape N).
     """
     N = diag.size(0)
     if iters is None: iters = N
@@ -85,15 +85,15 @@ def solve_tridiagonal_jacobi(diag:torch.Tensor, off_diag:torch.Tensor, v:torch.T
     now I also thought using solution from previous step would help but it doesn't.
 
     Args:
-        diag (torch.Tensor): diagonal vector of A (shape N).
-        off_diag (torch.Tensor): off-diagonal vector of A (shape N-1).
-        v (torch.Tensor): right-hand side vector (shape N).
+        diag (torch.Tensor): diagonal entries of A of shape (n,).
+        off_diagonal (torch.Tensor): off-diagonal entries of A of shape (n-1,).
+        v (torch.Tensor): input vector of shape (n,).
         x_init (torch.Tensor, optional): initial guess for the solution x. Defaults to None (zeros).
         iters (int): number of Jacobi iterations.
         tol: unused for this one but all solvers have same args.
 
     Returns:
-        torch.Tensor: Approximate solution x (shape N).
+        torch.Tensor: approximate solution x (shape N).
     """
 
     if x_init is None:
@@ -115,8 +115,114 @@ def solve_tridiagonal_jacobi(diag:torch.Tensor, off_diag:torch.Tensor, v:torch.T
     return x, True, iters
 
 
+def solve_sqrt_tridiagonal_lanczos(diag:torch.Tensor, off_diag:torch.Tensor, v:torch.Tensor, x_init=None, iters=100, tol=1e-6,):
+    """
+    Approximates sqrt(A)x = v where A is a symmetric tridiagonal matrix with given diagonal and off-diagonal.
+
+    Args:
+        diag (torch.Tensor): diagonal entries of A of shape (n,).
+        off_diagonal (torch.Tensor): off-diagonal entries of A of shape (n-1,).
+        v (torch.Tensor): input vector of shape (n,).
+        x_init (Any): unused.
+        iters (int): number of lanczos iters.
+        tol (float): lanczos tolerance.
+    """
+    device = v.device
+    dtype = v.dtype
+
+    v_norm = torch.norm(v)
+    if v_norm == 0:
+        return torch.zeros_like(v)
+    v_unit = v / v_norm
+
+    # matrix-vector product for tridiagonal A
+    def A_mv(vec):
+        Av = diag * vec
+        Av[:-1] += off_diag * vec[1:]
+        Av[1:] += off_diag * vec[:-1]
+        return Av
+
+    # lancsoz
+    V, T, success, actual_iterations = lanczos(A_mv, v_unit, iters, tol)
+    m = T.size(0)
+
+    # so now we can take square root and invert eigenvalues
+    eigenvalues, eigenvectors = torch.linalg.eigh(T) # pylint:disable=not-callable
+    sqrt_eigenvalues = 1.0 / torch.sqrt(eigenvalues.clamp(min=1e-12))
+
+    e1 = torch.zeros(m, device=device, dtype=dtype)
+    e1[0] = 1.0
+    coeffs = eigenvectors @ (sqrt_eigenvalues * (eigenvectors.t() @ e1))
+    x_approx = V @ coeffs
+    x_approx *= v_norm
+
+    return x_approx,success, actual_iterations
+
+def lanczos(A_mv, v_unit, max_iterations, tol):
+    """
+    Lanczos process to generate orthonormal basis and tridiagonal matrix.
+
+    Args:
+        A_mv (callable): matrix-vector product function.
+        v_unit (torch.Tensor): initial unit vector of shape (n,).
+        max_iterations (int): maximum number of iterations.
+        tol (float): tolerance for convergence.
+
+    Returns:
+        (torch.Tensor, torch.Tensor): orthonormal basis V, tridiagonal matrix T, success boolean and number of iterations.
+    """
+    device = v_unit.device
+    dtype = v_unit.dtype
+    n = v_unit.size(0)
+    V = torch.zeros((n, max_iterations), device=device, dtype=dtype)
+    T = torch.zeros((max_iterations, max_iterations), device=device, dtype=dtype)
+
+    V[:, 0] = v_unit
+    beta = 0.0
+
+    success = False
+    for j in range(max_iterations):
+        # current vector
+        v_j = V[:, j]
+
+        # w = A*v_j - beta_{j} * V[:, j-1]
+        if j == 0:
+            w = A_mv(v_j)
+        else:
+            w = A_mv(v_j) - beta * V[:, j-1]
+
+        # alpha_j = v_j^T * w
+        alpha = torch.dot(v_j, w)
+        T[j, j] = alpha
+
+        # reorthogonalize
+        w = w - alpha * v_j
+        for k in range(j):
+            w -= torch.dot(w, V[:, k]) * V[:, k]
+
+        # beta_{j+1}
+        beta = torch.norm(w).item()
+        if j + 1 < max_iterations:
+            T[j, j+1] = beta
+            T[j+1, j] = beta
+
+        # terminate
+        if beta < tol or j == max_iterations - 1:
+            success = True
+            break
+
+        # normalize and store next vector
+        V[:, j+1] = w / beta
+
+    # truncate to actual iterations performed
+    actual_iterations = j + 1 # type:ignore
+    return V[:, :actual_iterations], T[:actual_iterations, :actual_iterations], success, actual_iterations
+
+
 class TridiagonalAdam(Optimizer):
-    """adam with tridiagonal covariance matrix but it doesn't use square root.
+    """adam with tridiagonal covariance matrix.
+
+    Cg version is worse than adam (maybe because of lack of square root), and slow.
 
     Args:
         params (_type_): params to optimize
@@ -130,9 +236,28 @@ class TridiagonalAdam(Optimizer):
         tol (_type_, optional): tolerance for Ax=g solver. Defaults to 1e-6.
         iters (int, optional): number of Ax=g solver iterations. Defaults to 5.
         solver (_type_, optional): solver. Defaults to solve_tridiagonal_cg.
+        use_sqrt (bool, optional):
+            if True, uses elementwise square root of diagonal and off-diagonals. Otherwise uses no square root.
+            Alternatively use solve_sqrt_tridiagonal_lanczos solver. Defaults to False.
+        store_sqrt (bool, optional):
+            if True, stores EMA of square roots of diagonal and off-diagonal.
     """
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0, use_init = False, tol=1e-6, iters=6, solver = solve_tridiagonal_cg):
-        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, tol=tol, iters=iters, use_init = use_init, solver = solver)
+
+    def __init__(
+        self,
+        params,
+        lr=1e-3,
+        betas=(0.9, 0.999),
+        eps=1e-8,
+        weight_decay=0,
+        use_init=False,
+        tol=1e-6,
+        iters=6,
+        solver=solve_tridiagonal_cg,
+        use_sqrt=False,
+        store_sqrt=False,
+    ):
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, tol=tol, iters=iters, use_init = use_init, solver = solver, use_sqrt=use_sqrt, store_sqrt=store_sqrt)
         super().__init__(params, defaults)
 
         self._n_success = 0
@@ -173,12 +298,14 @@ class TridiagonalAdam(Optimizer):
 
                 # diagonal ema
                 exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
-                diag_ema.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+                if group['store_sqrt']: diag_ema.mul_(beta2).add_(grad.abs(), alpha = 1 - beta2)
+                else: diag_ema.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
 
                 # off diagonal ema
                 g = grad.view(-1)
                 grad_offdiag = g[:-1] * g[1:]
-                off_diag_ema.mul_(beta2).add_(grad_offdiag, alpha=1 - beta2)
+                if group['store_sqrt']: off_diag_ema.mul_(beta2).add_(grad_offdiag.sqrt_(), alpha=1 - beta2)
+                else: off_diag_ema.mul_(beta2).add_(grad_offdiag, alpha=1 - beta2)
 
                 # adam stuff
                 denom_diag_hat = diag_ema.div(bias_correction2)
@@ -193,6 +320,10 @@ class TridiagonalAdam(Optimizer):
                     x_init = None
 
                 solver = group['solver']
+
+                if group['use_sqrt']:
+                    denom_diag_hat = denom_diag_hat.sqrt()
+                    denom_offdiag_hat = denom_offdiag_hat.sqrt()
 
                 update_direction, success, iters = solver(
                     denom_diag_hat.view(-1),

@@ -1,4 +1,4 @@
-"""here is an idea, instead of storing EMAs of outer product diagonal, why not store EMAs of outer product eigenvecs and eigenvals"""
+"""here is an idea, instead of storing EMAs of outer product diagonal, why not store EMAs of outer product eigenvecs and eigenvals, well the reason why we don't do that is that it is a useless rank 1 matrix we are lerping for no reason, but who knows, maybe it will work"""
 import torch
 import torchzero as tz
 

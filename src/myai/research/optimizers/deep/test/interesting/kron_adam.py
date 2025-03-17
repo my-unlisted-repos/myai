@@ -20,8 +20,12 @@ class KroneckerAdam(Optimizer):
                     state['m'] = torch.zeros_like(p)
                     state['v'] = torch.zeros_like(p)
 
-    @torch.no_grad()
-    def step(self):
+    @torch.no_grad
+    def step(self,closure=None):
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
         for group in self.param_groups:
             lr = group['lr']
             beta1, beta2 = group['betas']
@@ -85,3 +89,4 @@ class KroneckerAdam(Optimizer):
 
                     denom = v_hat.sqrt().add_(eps)
                     p.addcdiv_(m_hat, denom, value=-lr)
+        return loss

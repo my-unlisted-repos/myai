@@ -20,11 +20,13 @@ class SubspaceInverse(Optimizer):
                 continue
 
             # Initialize orthonormal basis Q
-            Q = torch.randn(total_params, k, device=params[0].device)
+            group_k = group['k'] = min(group['k'], total_params)
+
+            Q = torch.randn(total_params, group_k, device=params[0].device)
             Q, _ = torch.linalg.qr(Q)
             group['Q'] = Q
             # Initialize covariance matrix H
-            group['H'] = torch.eye(k, device=params[0].device) * epsilon
+            group['H'] = torch.eye(group_k, device=params[0].device) * epsilon
             # Gradient buffer for basis updates
             group['grad_buffer'] = []
             group['step_count'] = 0
