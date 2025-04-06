@@ -24,13 +24,16 @@ class EigenNGD(Optimizer):
         self,
         params,
         lr=1e-3,
-        momentum=0.9,
+        momentum=0.0,
         history_size=10,
         update_freq=1,
         epsilon=1e-8,
         momentum_into_precond=False,
         precond_momentum=0.,
         post_momentum = 0.,
+        lowrank=False,
+        niter=2,
+        extra_q=2,
     ):
         defaults = dict(
             lr=lr,
@@ -40,7 +43,10 @@ class EigenNGD(Optimizer):
             update_freq=update_freq,
             epsilon=epsilon,
             precond_momentum=precond_momentum,
-            post_momentum=post_momentum
+            post_momentum=post_momentum,
+            lowrank=lowrank,
+            niter=niter,
+            extra_q=extra_q,
         )
         super().__init__(params, defaults)
         for group in self.param_groups:
@@ -99,7 +105,10 @@ class EigenNGD(Optimizer):
                     V = torch.stack(state['grad_queue'], dim=1) # d,k
                     success=True
                     try:
-                        U, S, _ = torch.linalg.svd(V, full_matrices=False) # pylint:disable=not-callable
+                        if group['lowrank']:
+                            U, S, _ = torch.svd_lowrank(V, q=len(state['grad_queue'])+group['extra_q'], niter=group['niter'])
+                        else:
+                            U, S, _ = torch.linalg.svd(V, full_matrices=False) # pylint:disable=not-callable
                     except Exception as e:
                         # when those are None, it falls back to adam
                         state['U'] = None; state['S'] = None
@@ -121,7 +130,7 @@ class EigenNGD(Optimizer):
                         else: state['U'], state['S'] = U, S
 
                 # apply preconditioning
-                if state['U'] is not None and state['S'] is not None:
+                if state['U'] is not None and state['S'] is not None and (len(state['grad_queue']) == group['history_size'] or group['update_freq'] == 1):
                     if 'adam_ema' in state: del state['adam_ema']
                     U, S = state['U'], state['S']
                     Ut_g = torch.mv(U.t(), flattened_grad)

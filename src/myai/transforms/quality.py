@@ -3,7 +3,7 @@ import random
 import torch, numpy as np
 
 from ._base import RandomTransform
-from torchzero.random import randmask
+from ..random import randmask
 
 __all__ = [
     "add_gaussian_noise",

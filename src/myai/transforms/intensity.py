@@ -3,7 +3,7 @@ from typing import overload
 
 import numpy as np
 import torch
-from torchzero.random import uniform
+from ..random import uniform
 from ._base import RandomTransform, Transform
 
 

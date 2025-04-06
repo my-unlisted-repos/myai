@@ -70,10 +70,10 @@ class LowRankAdam(Optimizer):
                 u_scaled = inv_v * u_corrected
 
                 # Numerator: (grad * inv_v) · u_corrected
-                numerator = (grad * inv_v).dot(u_corrected)
+                numerator = ((grad * inv_v) * u_corrected).sum()
 
                 # Denominator: 1 + u_corrected · (inv_v * u_corrected)
-                denominator = 1.0 + u_corrected.dot(u_scaled)
+                denominator = 1.0 + (u_corrected * u_scaled).sum()
 
                 # Sherman-Morrison update
                 term1 = inv_v * grad

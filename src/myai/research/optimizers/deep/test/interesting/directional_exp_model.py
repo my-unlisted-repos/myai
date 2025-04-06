@@ -6,9 +6,7 @@ import torch
 
 
 class DirectionalExp(torch.optim.Optimizer):
-    """basically like directional newton step but with an exponential model instead of quadratic, I actually think this is better.
-
-    would be nice to adapt LBFGS to estimate a full exponential model. That's an insane task though. """
+    """basically like directional newton step but with an exponential model instead of quadratic, I actually think this is better."""
     def __init__(self, params, lr=1e-3, delta=1e-3, val_step = False):
         defaults = dict(lr=lr, delta=delta)
         super().__init__(params, defaults)

@@ -38,7 +38,8 @@ class StepScheduler(_SchedulerCallback):
 def scheduler(scheduler, on: T.Literal['batch', 'epoch', 'step'] = 'batch',):
     if on == 'batch':
         return BatchScheduler(scheduler)
-    elif on == 'epoch':
+    if on == 'epoch':
         return EpochScheduler(scheduler)
-    elif on == 'step':
+    if on == 'step':
         return StepScheduler(scheduler)
+    raise ValueError(on)

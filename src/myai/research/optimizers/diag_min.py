@@ -3,15 +3,15 @@ import torch, torchzero as tz
 
 class DiagLinear(tz.core.TensorListOptimizer):
     """this minimizes quadratic functions with diagonal hessian in 2 gradient evaluations."""
-    def __init__(self, params, lr = 1e-3, y = 'grad', allow_negative_curvature = True):
-        defaults = dict(lr = lr)
+    def __init__(self, params, lr = 1.0, eps = 1e-3, y = 'grad', allow_negative_curvature = True):
+        defaults = dict(lr=lr, eps = eps)
         super().__init__(params, defaults)
         self.allow_negative_curvature = allow_negative_curvature
         self.y = y
 
     @torch.no_grad
     def step(self, closure):
-        lr = self.get_first_group_key('lr')
+        eps = self.get_first_group_key('eps')
         params = self.get_params()
 
         # evaluate initial gradient
@@ -20,7 +20,7 @@ class DiagLinear(tz.core.TensorListOptimizer):
 
         # move by lr and evaluate new gradient
         p1 = params.clone()
-        params.sub_(g1, alpha = lr)
+        params.sub_(g1, alpha = eps)
         with torch.enable_grad(): l2 = closure()
         g2 = params.ensure_grad_().grad
         p2 = params
@@ -28,7 +28,7 @@ class DiagLinear(tz.core.TensorListOptimizer):
         # difference normalized by difference between parameters
         if self.y == 'grad': y_diff = g1 - g2
         elif self.y == 'loss': y_diff = l1 - l2
-        elif self.y == 'sum': y_diff = (g1 + l1) - (g2 + l2)
+        elif self.y == 'sum': y_diff = (g1 + g1.full_like(l1.item()).copysign_(g1)) - (g2 + g2.full_like(l2.item()).copysign_(g2))
         elif self.y == 'prod': y_diff = (g1 * l1) - (g2 * l2)
         else: raise ValueError(self.y)
         diff = y_diff / (p1 - p2)
@@ -37,9 +37,9 @@ class DiagLinear(tz.core.TensorListOptimizer):
         step = g1 / diff
 
         # set negative curvature to lr
-        if not self.allow_negative_curvature: step.masked_fill_(y_diff.sign() != g1.sign(), lr)
+        if not self.allow_negative_curvature: step.masked_fill_(y_diff.sign() != g1.sign(), eps)
 
-        params.set_(p1 - step)
+        params.set_(p1 - step * self.get_group_key('lr'))
         return l1
 
 
@@ -50,13 +50,14 @@ class DiagQuadratic(tz.core.TensorListOptimizer):
     def __init__(
         self,
         params,
-        lr = 1e-3,
+        lr = 1.,
+        eps = 1e-3,
         y = 'grad',
         allow_negative_curvature = True,
         min_a = 1e-8,
 
     ):
-        defaults = dict(lr = lr)
+        defaults = dict(lr = lr, eps = eps)
         self.min_a = min_a
         super().__init__(params, defaults)
         self.allow_negative_curvature = allow_negative_curvature
@@ -64,7 +65,7 @@ class DiagQuadratic(tz.core.TensorListOptimizer):
 
     @torch.no_grad
     def step(self, closure):
-        lr = self.get_first_group_key('lr')
+        eps = self.get_first_group_key('eps')
         params = self.get_params()
         p1 = params.clone()
 
@@ -73,24 +74,30 @@ class DiagQuadratic(tz.core.TensorListOptimizer):
         g1 = params.ensure_grad_().grad.clone()
 
         # g2
-        params.sub_(g1, alpha = lr)
+        params.sub_(g1, alpha = eps)
         with torch.enable_grad(): l2 = closure()
         g2 = params.ensure_grad_().grad
         p2 = params.clone()
 
         # g3
-        params.sub_(g2, alpha = lr)
+        params.sub_(g2, alpha = eps)
         with torch.enable_grad(): l3 = closure()
         g3 = params.ensure_grad_().grad
         p3 = params.clone()
 
         if self.y == 'loss':
-            g1 = l1; g2 = l2; g3 = l3
+            g1 = g1.full_like(l1.item())
+            g2 = g2.full_like(l2.item())
+            g3 = g3.full_like(l3.item())
         elif self.y == 'sum':
-            g1 = g1+l1; g2=g2+l2; g3=g3+l3
+            g1 = g1+g1.full_like(l1.item()).copysign_(g1)
+            g2 = g2+g2.full_like(l2.item()).copysign_(g2)
+            g3 = g3+g3.full_like(l3.item()).copysign_(g3)
         elif self.y == 'prod':
-            g1 = g1*l1; g2=g2*l2; g3=g3*l3
-        else:
+            g1 = g1*l1
+            g2 = g2*l2
+            g3 = g3*l3
+        elif self.y != 'grad':
             raise ValueError(self.y)
 
         # fit quadratic
@@ -104,10 +111,10 @@ class DiagQuadratic(tz.core.TensorListOptimizer):
         grad_diff = g1 - g2
         diff = grad_diff.div(p1 - p2)
         linear_step = g1 / diff
-        if not self.allow_negative_curvature: linear_step.masked_fill_(grad_diff.sign() != g1.sign(), lr)
+        if not self.allow_negative_curvature: linear_step.masked_fill_(grad_diff.sign() != g1.sign(), eps)
 
         a.nan_to_num_(0,0,0)
         quadratic_minimizer.masked_set_(a <= self.min_a, p1 - linear_step)
 
-        params.set_(quadratic_minimizer)
+        params.lerp_compat_(quadratic_minimizer, self.get_group_key('lr'))
         return l1

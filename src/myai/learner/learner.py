@@ -33,16 +33,16 @@ DEFAULT_CALLBACKS = ()
 if T.TYPE_CHECKING:
     from accelerate import Accelerator
 
-def _tz_module_handler(v: tz.m.OptimizerModule):
+def _tz_module_handler(v: "tz.m.OptimizerModule"):
     if len(v.children) == 0: return v.__class__.__name__
     return f"{v.__class__.__name__}({'-'.join(m.__class__.__name__ for m in v.children.values())}"
 
-def _tz_modular_handler(v: tz.Modular):
+def _tz_modular_handler(v: "tz.Modular"):
     if v.__class__.__name__ != "Modular": return v.__class__.__name__
     return f'M({"-".join(_tz_module_handler(m) for m in v.unrolled_modules)})'
 
 _extra_type_handlers = {
-    tz.Modular: _tz_modular_handler,
+    # tz.Modular: _tz_modular_handler,
 }
 
 def _maybe_add_repr_(d: dict, attr):
@@ -194,7 +194,8 @@ class Learner(EventModel):
 
     def set_scheduler_cls[**P](self, cls: abc.Callable[P, torch.optim.lr_scheduler.LRScheduler | T.Any], *args: P.args, **kwargs: P.kwargs):
         return self._set_x_cls('scheduler', cls, *args, **kwargs)
-    def set_scheduler(self, scheduler: torch.optim.lr_scheduler.LRScheduler | T.Any): return self._set_x('scheduler', scheduler)
+    def set_scheduler(self, scheduler: torch.optim.lr_scheduler.LRScheduler | T.Any):
+        return self._set_x('scheduler', scheduler)
 
     def add_named_info(self, name: str, **info: T.Any):
         """Add named misc. info, for example transforms."""

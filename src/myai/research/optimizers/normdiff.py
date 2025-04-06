@@ -1,7 +1,7 @@
 # pylint: disable = not-callable
 import torch
 
-class DiffNormGrad(torch.optim.Optimizer):
+class NormGradDiff(torch.optim.Optimizer):
     """new optimizer i thought of
 
     Args:

@@ -5,8 +5,7 @@ import torch
 from torch.optim import Optimizer
 
 class StochasticLBFGS(Optimizer):
-    """This might work on problems with a bit of noise, but not mini-batch levels of noise.
-    And this doesn't use closure. Better than LBFGS and SGD on some tasks."""
+    """This might work on problems with a bit of noise, but not mini-batch levels of noise. Better than LBFGS and SGD on some tasks."""
     def __init__(self, params, lr=0.1, warmup_steps=5, buffer_size=5,
                  min_damping=1e-3, max_lr_scale=10.0):
         defaults = dict(lr=lr, warmup_steps=warmup_steps, buffer_size=buffer_size,
@@ -132,8 +131,8 @@ class StochasticLBFGS(Optimizer):
         return sum(torch.dot(ai.flatten(), bi.flatten()) for ai, bi in zip(a, b))
 
 
-class SingleStepLBFGS(Optimizer):
-    """LBFGS version that doesn't use closure. Better than LBFGS and SGD on some tasks.
+class StochasticLBFGS2(Optimizer):
+    """Better than LBFGS and SGD on some tasks.
     If LBFGS goes unstable with lr = 1, this one might still work and beat it."""
     def __init__(self, params, lr=1., history_size=5, epsilon=1e-8):
         defaults = dict(lr=lr, history_size=history_size, epsilon=epsilon)

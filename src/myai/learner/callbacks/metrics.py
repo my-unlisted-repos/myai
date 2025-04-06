@@ -18,7 +18,7 @@ if T.TYPE_CHECKING:
 
 class Loss(Callback):
     order = -1
-    def __init__(self, agg_fn = np.mean, name = 'loss'):
+    def __init__(self, agg_fn = np.nanmean, name = 'loss'):
         self.test_losses = []
         self.agg_fn = agg_fn
         self.name = name
@@ -31,7 +31,7 @@ class Loss(Callback):
 
     def after_test_epoch(self, learner: "Learner"):
         if len(self.test_losses) > 0:
-            learner.log(f"test {self.name}", np.mean(self.test_losses))
+            learner.log(f"test {self.name}", self.agg_fn(self.test_losses))
             self.test_losses = []
 
 

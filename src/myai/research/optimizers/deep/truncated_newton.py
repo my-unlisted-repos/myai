@@ -4,7 +4,7 @@ from torch.optim import Optimizer
 class TruncatedNewton(Optimizer):
     def __init__(self, params, lr=0.1, cg_iters=10, epsilon=1e-5):
         defaults = dict(lr=lr, cg_iters=cg_iters, epsilon=epsilon)
-        super(TruncatedNewton, self).__init__(params, defaults)
+        super().__init__(params, defaults)
 
     def step(self, closure=None):
         if closure is None:
