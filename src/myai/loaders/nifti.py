@@ -20,7 +20,7 @@ else:
 def niiread(path:str) -> np.ndarray:
     return niiread_sitk(path)
 
-def niiwrite(path, arr:np.ndarray | torch.Tensor, reference: sitk.Image | None = None, clevel = 9):
+def niiwrite(path, arr:np.ndarray | torch.Tensor | sitk.Image, reference: sitk.Image | None = None, clevel = 9):
     return niiwrite_sitk(path, arr, reference, clevel)
 
 def niireadtensor(path:str):

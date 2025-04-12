@@ -58,8 +58,7 @@ class FastProgress(Callback):
                     y = np.array(list(learner.logger[name].values()))
                     # only smooth when it is long enough
                     if smooth_length * 2 < len(y):
-                        convolved = gaussian_filter1d(y, self.smooth[name], mode="nearest", truncate = 4)
-                        y[smooth_length:-smooth_length] = convolved[smooth_length:-smooth_length]
+                        y = gaussian_filter1d(y, self.smooth[name], mode="nearest", truncate = 4)
                     graphs.append([list(learner.logger[name].keys()), y])
 
                 # no smoothing
