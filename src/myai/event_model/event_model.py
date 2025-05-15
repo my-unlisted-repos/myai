@@ -1,13 +1,15 @@
 import bisect
+import functools
 import inspect
+import logging
 import typing as T
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import contextmanager
-import logging
-import functools
+
 from .callback import Callback, _CallbackMethod, _get_order, _get_valid_methods
 from .conditional_callback import ConditionalCallback
+
 
 class CancelContext(Exception):
     """Raising `CancelContext('name')` ends an `event_model.context('name')` context."""

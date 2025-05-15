@@ -15,7 +15,7 @@ class Young(Optimizer):
         p (float, optional): exponent for the conjugate pair (default: 1.5)
     """
 
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, p=1.5, mul=10000):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, p=1.5, mul=1):
 
         q = p / (p - 1.0)  # Conjugate exponent
 

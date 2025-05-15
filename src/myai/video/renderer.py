@@ -1,3 +1,5 @@
+from typing import Literal
+
 import cv2
 import numpy as np
 import torch
@@ -105,8 +107,23 @@ class OpenCVRenderer:
         self.release()
 
 
-def render_frames(file, frames, fps = 60):
-    with OpenCVRenderer(file, fps) as r:
+def render_frames(file, frames, fps = 60, norm: Literal['none', 'each', 'all'] = 'none', scale=1):
+    if norm == 'all':
+        frames = [tonumpy(f).astype(np.float32) for f in frames]
+        min_v = min(f.min() for f in frames)
+        frames = [(f - min_v) for f in frames]
+        max_v = max(f.max() for f in frames)
+        if max_v == 0: max_v = 1
+        frames = [(f / max_v) * 255 for f in frames]
+        frames = [np.clip(f, 0, 255).astype(np.uint8) for f in frames]
+
+    if norm == 'each':
+        frames = [tonumpy(f).astype(np.float32) for f in frames]
+        frames = [(f - f.min()) for f in frames]
+        frames = [(f / (f.max() if f.max() != 0 else 1)) * 255 for f in frames]
+        frames = [np.clip(f, 0, 255).astype(np.uint8) for f in frames]
+
+    with OpenCVRenderer(file, fps, scale=scale) as r:
         for frame in frames:
             r.add_frame(frame)
 

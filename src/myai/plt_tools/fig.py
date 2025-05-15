@@ -159,6 +159,15 @@ class Fig:
     @method2method_return_override(_Plot.funcplot2d_quiver, _Fig)
     def funcplot2d_quiver(self, *args, **kwargs): return self._add_plot_func("funcplot2d_quiver", *args, **kwargs)
 
+    @method2method_return_override(_Plot.set_cmap, _Fig)
+    def set_cmap(self, *args, **kwargs): return self._add_plot_func("set_cmap", *args, **kwargs)
+
+    @method2method_return_override(_Plot.set_prop_cycle, _Fig)
+    def set_prop_cycle(self, *args, **kwargs): return self._add_plot_func("set_prop_cycle", *args, **kwargs)
+
+    @method2method_return_override(_Plot.set_prop_cycle_from_cmap, _Fig)
+    def set_prop_cycle_from_cmap(self, *args, **kwargs): return self._add_plot_func("set_prop_cycle_from_cmap", *args, **kwargs)
+
     def show(
         self,
         nrows: int | float | None = None,

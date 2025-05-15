@@ -713,6 +713,20 @@ class _Plot:
         #ax.get_figure().colorbar(matplotlib.cm.ScalarMappable(norm=None, cmap=cmap), ax=ax, location=location, orientation=orientation, fraction=fraction, shrink=shrink, aspect=aspect) # type:ignore
         return self
 
+    def set_cmap(self, cmap):
+        plt.set_cmap(cmap)
+        return self
+
+    def set_prop_cycle(self, *args, **kwargs):
+        self.ax.set_prop_cycle(*args, **kwargs)
+        return self
+
+    def set_prop_cycle_from_cmap(self, cmap, n):
+        from cycler import cycler
+        colors = plt.colormaps[cmap](np.linspace(0,1,n))
+        self.ax.set_prop_cycle(cycler('color', colors))
+        return self
+
     def preset(
         self,
         preset: Literal['plot', 'image'] = 'plot',

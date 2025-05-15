@@ -33,7 +33,7 @@ DEFAULT_CALLBACKS = ()
 if T.TYPE_CHECKING:
     from accelerate import Accelerator
 
-def _tz_module_handler(v: "tz.m.OptimizerModule"):
+def _tz_module_handler(v: "tz.core.Module"):
     if len(v.children) == 0: return v.__class__.__name__
     return f"{v.__class__.__name__}({'-'.join(m.__class__.__name__ for m in v.children.values())}"
 
@@ -42,7 +42,7 @@ def _tz_modular_handler(v: "tz.Modular"):
     return f'M({"-".join(_tz_module_handler(m) for m in v.unrolled_modules)})'
 
 _extra_type_handlers = {
-    # tz.Modular: _tz_modular_handler,
+    tz.Modular: _tz_modular_handler,
 }
 
 def _maybe_add_repr_(d: dict, attr):
@@ -455,9 +455,9 @@ class Learner(EventModel):
 
         # save model and optimizer as strings
         if text:
-            txtwrite(str(self.model), os.path.join(dir, 'model.txt'))
-            txtwrite(str(self.optimizer), os.path.join(dir, 'optimizer.txt'))
-            txtwrite(self.logger.as_yaml_string(), os.path.join(dir, 'logger.yaml'))
+            txtwrite(os.path.join(dir, 'model.txt'), str(self.model))
+            txtwrite(os.path.join(dir, 'optimizer.txt'), str(self.optimizer))
+            txtwrite(os.path.join(dir, 'logger.yaml'), self.logger.as_yaml_string(), )
 
     def load(self, dir: str):
         files = set(os.listdir(dir))

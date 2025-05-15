@@ -19,14 +19,26 @@ class Accelerate(Callback):
         learner.accelerator = self.accelerator
 
     def before_fit(self, learner: "Learner"):
-        (
-            learner.model,
-            learner.optimizer,
-            learner.scheduler,
-            learner.dltrain,
-        ) = learner.accelerator.prepare(
-            learner.model,
-            learner.optimizer,
-            learner.scheduler,
-            learner.dltrain,
-        )
+        import torchzero as tz
+        if isinstance(learner.optimizer, tz.Modular): # how to fix???
+            (
+                learner.model,
+                learner.scheduler,
+                learner.dltrain,
+            ) = learner.accelerator.prepare(
+                learner.model,
+                learner.scheduler,
+                learner.dltrain,
+            )
+        else:
+            (
+                learner.model,
+                learner.optimizer,
+                learner.scheduler,
+                learner.dltrain,
+            ) = learner.accelerator.prepare(
+                learner.model,
+                learner.optimizer,
+                learner.scheduler,
+                learner.dltrain,
+            )
