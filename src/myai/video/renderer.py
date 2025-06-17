@@ -3,7 +3,7 @@ from typing import Literal
 import cv2
 import numpy as np
 import torch
-from ..transforms import force_hw3, tonumpy
+from ..transforms import to_HW3, tonumpy
 
 class OpenCVRenderer:
     """A frame by frame video renderer using OpenCV.
@@ -60,12 +60,12 @@ class OpenCVRenderer:
         :raises ValueError: If frame shape is different from the previous one.
         """
         # make sure it is hw3 and scale it
-        if self.scale == 1: frame = tonumpy(force_hw3(frame))[:,:,::-1]
+        if self.scale == 1: frame = tonumpy(to_HW3(frame))[:,:,::-1]
         elif self.scale > 1:
-            frame = np.repeat(np.repeat(tonumpy(force_hw3(frame))[:,:,::-1], int(self.scale), 0), int(self.scale), 1)
+            frame = np.repeat(np.repeat(tonumpy(to_HW3(frame))[:,:,::-1], int(self.scale), 0), int(self.scale), 1)
         else:
             skip = round(1/self.scale)
-            frame = tonumpy(force_hw3(frame))[::skip,::skip,::-1]
+            frame = tonumpy(to_HW3(frame))[::skip,::skip,::-1]
 
         # on first frame create writer and use frame shape as video size
         if self.writer is None:

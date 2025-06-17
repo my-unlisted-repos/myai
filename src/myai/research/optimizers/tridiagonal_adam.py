@@ -1,4 +1,4 @@
-"""Adam with little bit more of the covariance matrix"""
+"""Dumbest Optimizer Ever"""
 from typing import Literal
 import torch
 from torch.optim import Optimizer

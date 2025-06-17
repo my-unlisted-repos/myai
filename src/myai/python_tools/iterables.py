@@ -1,15 +1,15 @@
 import functools
 import operator
-import typing as T
+from typing import Any
 from collections.abc import Iterable, Mapping, Sequence
 
-def _flatten_no_check(iterable: Iterable | T.Any) -> list[T.Any]:
+def _flatten_no_check(iterable: Iterable | Any) -> list[Any]:
     """Flatten an iterable of iterables, returns a flattened list. Note that if `iterable` is not Iterable, this will return `[iterable]`."""
     if isinstance(iterable, Iterable):
         return [a for i in iterable for a in _flatten_no_check(i)]
     return [iterable]
 
-def flatten(iterable: Iterable) -> list[T.Any]:
+def flatten(iterable: Iterable) -> list[Any]:
     """Flatten an iterable of iterables, returns a flattened list. If `iterable` is not iterable, raises a TypeError."""
     if isinstance(iterable, Iterable): return [a for i in iterable for a in _flatten_no_check(i)] # type:ignore=reportUnnecessaryIsInstance
     raise TypeError(f'passed object is not an iterable, {type(iterable) = }')

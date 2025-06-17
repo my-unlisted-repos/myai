@@ -1,5 +1,4 @@
 import math
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 import torch
 import torch.optim as optim
@@ -35,25 +34,6 @@ class AHLRD(optim.Optimizer):
     def __init__(self, params, lr=1e-3, beta1=0.9, beta2=0.999, eps=1e-8,
                  weight_decay=0, damping=1e-4, update_freq=20, min_rank=5,
                  max_rank=50, threshold=0.9, warmup_steps=100):
-        if not 0.0 <= lr:
-            raise ValueError(f"Invalid learning rate: {lr}")
-        if not 0.0 <= beta1 < 1.0:
-            raise ValueError(f"Invalid beta1 parameter: {beta1}")
-        if not 0.0 <= beta2 < 1.0:
-            raise ValueError(f"Invalid beta2 parameter: {beta2}")
-        if not 0.0 <= eps:
-            raise ValueError(f"Invalid epsilon value: {eps}")
-        if not 0.0 <= weight_decay:
-            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
-        if not 0.0 <= damping:
-            raise ValueError(f"Invalid damping value: {damping}")
-        if not 1 <= update_freq:
-            raise ValueError(f"Invalid update_freq value: {update_freq}")
-        if not 1 <= min_rank <= max_rank:
-            raise ValueError(f"Invalid rank bounds: min_rank={min_rank}, max_rank={max_rank}")
-        if not 0.0 < threshold < 1.0:
-            raise ValueError(f"Invalid threshold value: {threshold}")
-
         defaults = dict(lr=lr, beta1=beta1, beta2=beta2, eps=eps,
                         weight_decay=weight_decay, damping=damping,
                         update_freq=update_freq, min_rank=min_rank,
@@ -194,14 +174,8 @@ class AHLRD(optim.Optimizer):
         # Reshape back to original shape
         return preconditioned_grad.view(orig_shape)
 
-    @torch.no_grad()
+    @torch.no_grad
     def step(self, closure=None):
-        """Performs a single optimization step.
-
-        Args:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
-        """
         loss = None
         if closure is not None:
             with torch.enable_grad():

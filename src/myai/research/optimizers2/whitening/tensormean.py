@@ -1,13 +1,11 @@
 import math
 import warnings
-from typing import List, Optional, Tuple
 
 import torch
 from torch import optim
 from torch import Tensor
 
 
-# Helper function for Matrix Inverse Square Root using Eigenvalue Decomposition
 def matrix_inverse_sqrt(matrix: Tensor, epsilon: float = 1e-10) -> Tensor:
     """
     Computes the inverse square root of a positive semi-definite matrix.
@@ -44,7 +42,7 @@ def matrix_inverse_sqrt(matrix: Tensor, epsilon: float = 1e-10) -> Tensor:
         # Note: V returned by eigh has columns as eigenvectors. V.T is correct here.
         inv_sqrt_matrix = eigenvectors @ torch.diag(inv_sqrt_eigenvalues) @ eigenvectors.T
 
-    except torch._C._LinAlgError as e:
+    except torch.linalg.LinAlgError as e:
         warnings.warn(f"Warning: linalg.eigh failed: {e}. Falling back to adding larger epsilon to diagonal.")
         # Fallback: Add more epsilon and try again or return identity/scaled identity
         try:
@@ -87,28 +85,12 @@ class AdamMeanCov(optim.Optimizer):
                  or to eigenvalues for numerical stability (default: 1e-8)
             weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
         """
-        if not 0.0 <= lr:
-            raise ValueError(f"Invalid learning rate: {lr}")
-        if not 0.0 <= eps:
-            raise ValueError(f"Invalid epsilon value: {eps}")
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
-        if not 0.0 <= weight_decay:
-             raise ValueError(f"Invalid weight_decay value: {weight_decay}")
 
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super().__init__(params, defaults)
 
-    @torch.no_grad()
+    @torch.no_grad
     def step(self, closure=None):
-        """Performs a single optimization step.
-
-        Args:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
-        """
         loss = None
         if closure is not None:
             with torch.enable_grad():

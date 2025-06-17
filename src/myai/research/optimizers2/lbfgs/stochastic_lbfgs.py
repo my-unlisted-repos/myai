@@ -28,8 +28,6 @@ def _unflatten_vector(vector, params):
 
 class StochasticLBFGS(Optimizer):
     """
-    Implements a stochastic L-BFGS algorithm, adapted for mini-batch settings.
-
     Args:
         params (iterable): Iterable of parameters to optimize or dicts defining
             parameter groups.
@@ -56,25 +54,10 @@ class StochasticLBFGS(Optimizer):
                  damping=1e-8,
                  weight_decay=0):
 
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0 <= history_size:
-            raise ValueError("Invalid history size: {}".format(history_size))
-        if not 1 <= update_freq:
-            raise ValueError("Invalid update frequency: {}".format(update_freq))
-        if ema_beta is not None and not (0.0 < ema_beta < 1.0):
-             raise ValueError("Invalid ema_beta value: {}".format(ema_beta))
-        if not 0.0 <= curvature_eps:
-            raise ValueError("Invalid curvature epsilon: {}".format(curvature_eps))
-        if not 0.0 <= damping:
-            raise ValueError("Invalid damping: {}".format(damping))
-        if not 0.0 <= weight_decay:
-            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
-
         defaults = dict(lr=lr, history_size=history_size, update_freq=update_freq,
                         ema_beta=ema_beta, curvature_eps=curvature_eps,
                         damping=damping, weight_decay=weight_decay)
-        super(StochasticLBFGS, self).__init__(params, defaults)
+        super().__init__(params, defaults)
 
         # Stochastic L-BFGS specific state initialization
         # Needs to be done per parameter group if options differ,
@@ -109,7 +92,7 @@ class StochasticLBFGS(Optimizer):
             'gamma': 1.0, # Initial Hessian scaling factor
         }
 
-    @torch.no_grad()
+    @torch.no_grad
     def step(self, closure=None):
         """Performs a single optimization step.
 

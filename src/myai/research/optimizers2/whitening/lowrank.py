@@ -1,7 +1,6 @@
 import math
 import warnings
 from collections import deque
-from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.optim as optim
@@ -71,9 +70,8 @@ class LoRAP(optim.Optimizer):
             self.state['momentum_buffer'] = torch.zeros_like(_flatten_params(self._params_list))
 
 
-    @torch.no_grad()
+    @torch.no_grad
     def step(self, closure=None):
-        """Performs a single optimization step."""
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -223,7 +221,7 @@ class LoRAP(optim.Optimizer):
 
 # Helper function to get parameters and gradients for a group
 # Flattens them into single vectors
-def _get_flat_params_grads(param_list: List[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, List[torch.Tensor]]:
+def _get_flat_params_grads(param_list: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor, list[torch.Tensor]]:
     """Flattens parameters and their gradients for a list of tensors."""
     original_shapes = [p.shape for p in param_list]
     params_flat = parameters_to_vector(param_list)
@@ -246,7 +244,7 @@ def _get_flat_params_grads(param_list: List[torch.Tensor]) -> Tuple[torch.Tensor
     return params_flat, grads_flat, original_shapes
 
 # Helper function to set updated flat parameters back to original tensors
-def _set_flat_params(param_list: List[torch.Tensor], params_flat: torch.Tensor):
+def _set_flat_params(param_list: list[torch.Tensor], params_flat: torch.Tensor):
     """Sets parameter values from a flat vector."""
     vector_to_parameters(params_flat, param_list)
 
@@ -271,16 +269,6 @@ class CompressedAdam(optim.Optimizer):
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
                  weight_decay=0, rank=10, amsgrad=False):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
-        if not 0 <= rank:
-            raise ValueError("Invalid rank: {}".format(rank))
         if amsgrad:
             print("Warning: AMSGrad is not fully implemented for the low-rank component in CompressedAdam.")
             # Need to track max(Lambda) similarly to max(v_hat) if implemented.
@@ -296,14 +284,8 @@ class CompressedAdam(optim.Optimizer):
             group.setdefault('amsgrad', False)
 
 
-    @torch.no_grad()
+    @torch.no_grad
     def step(self, closure=None):
-        """Performs a single optimization step.
-
-        Args:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
-        """
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -386,7 +368,7 @@ class CompressedAdam(optim.Optimizer):
                 # Using torch.linalg.svd which is generally preferred
                 # full_matrices=False is important for efficiency with tall matrices
                 U, S, Vh = torch.linalg.svd(A, full_matrices=False)
-            except torch._C._LinAlgError as e:
+            except torch.linalg.LinAlgError as e:
                  print(f"Warning: SVD failed on step {step}. Skipping second moment update. Error: {e}")
                  # Keep previous Q, Lambda if SVD fails
                  Q_t = Q_prev

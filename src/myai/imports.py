@@ -41,7 +41,7 @@ from .event_model.conditional_callback import ConditionalCallback
 from .logger import DictLogger
 
 if sys.version_info[1] >= 12: from .learner import *
-from .loaders.csv_ import csvread, csvwrite
+from .loaders.csv import csvread, csvwrite
 from .loaders.image import imread, imreadtensor, imwrite
 from .loaders.text import txtread, txtwrite
 from .loaders.yaml import yamlread, yamlwrite
@@ -76,12 +76,27 @@ from .python_tools import printargs as printa
 from .torch_tools import (
                            count_params,
                            pad,
+                           crop,
                            pad_dim,
                            pad_like,
                            pad_to_shape,
                            performance_tweaks,
 )
-from .transforms import normalize, tonumpy, totensor, znormalize
+from .transforms import (
+                           normalize,
+                           to_3HW,
+                           to_channel_first,
+                           to_channel_last,
+                           to_CHW,
+                           to_HW,
+                           to_HW3,
+                           to_HWC,
+                           tofloat,
+                           tonumpy,
+                           tositk,
+                           totensor,
+                           znormalize,
+)
 
 CUDA = torch.device('cuda')
 CPU = torch.device('cpu')

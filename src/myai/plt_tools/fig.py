@@ -196,11 +196,11 @@ class Fig:
         ncols = round(ncols)
         nrows = max(nrows, 1)
         ncols = max(ncols, 1)
-        r = True
+        c = True
         while nrows * ncols < len(self.plots):
-            if r: ncols += 1
-            else: ncols += 1
-            r = not r
+            if c: ncols += 1
+            else: nrows += 1
+            c = not c
 
         nrows = min(nrows, len(self.plots))
         ncols = min(ncols, len(self.plots))

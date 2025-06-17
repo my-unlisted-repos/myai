@@ -98,7 +98,7 @@ def path_zoom(path: str) -> str:
     return path
 
 def get_first_file(path: str) -> str:
-    if not os.path.exists(path): return FileNotFoundError(f"{path} doesn't exist")
+    if not os.path.exists(path): raise FileNotFoundError(f"{path} doesn't exist")
     if os.path.isfile(path): return path
     children = listdir_fullpaths(path)
     if len(children) == 0: raise FileNotFoundError(f"No files or folders found in {path}")

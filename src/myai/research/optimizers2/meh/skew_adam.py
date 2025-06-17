@@ -1,17 +1,17 @@
+from collections.abc import Callable
+
 import torch
 import torch.optim as optim
 from torch import Tensor
-from typing import List, Optional, Tuple
-from collections.abc import Callable
 
-# Needed for type hinting
-Params = List[Tensor]
-MaybeGrad = Optional[Tensor]
-LossClosure = Optional[Callable]
+# bro had a vision
+Params = list[Tensor]
+MaybeGrad = Tensor | None
+LossClosure = Callable | None
 State = dict
 
 class SkewAdam(optim.Optimizer):
-    r"""Implements Adam algorithm with an added skew-symmetric interaction term.
+    r"""Weird ass adam.
 
     Args:
         params (iterable): iterable of parameters to optimize or dicts defining
@@ -54,43 +54,23 @@ class SkewAdam(optim.Optimizer):
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
                  weight_decay=0, skew_gamma=0.0, amsgrad=False):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
-        if not 0.0 <= weight_decay:
-            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
-        if amsgrad:
-            # AMSGrad variant is more complex to combine with skew term, not implemented here
-            print("Warning: AMSGrad not fully implemented for the skew term in SkewAdam. Proceeding without AMSGrad logic for max_exp_avg_sq.")
-            # raise NotImplementedError("AMSGrad not implemented for SkewAdam yet.")
 
         defaults = dict(lr=lr, betas=betas, eps=eps,
                         weight_decay=weight_decay, skew_gamma=skew_gamma, amsgrad=amsgrad)
-        super(SkewAdam, self).__init__(params, defaults)
+        super().__init__(params, defaults)
 
     def __setstate__(self, state):
-        super(SkewAdam, self).__setstate__(state)
+        super().__setstate__(state)
         # Set amsgrad default to False unless explicitly set in state
         for group in self.param_groups:
             group.setdefault('amsgrad', False)
 
-    @torch.no_grad()
-    def step(self, closure: LossClosure = None) -> Optional[float]:
-        """Performs a single optimization step.
-
-        Args:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
-        """
+    @torch.no_grad
+    def step(self, closure: LossClosure = None) -> float | None:
         loss = None
         if closure is not None:
-             with torch.enable_grad():
-                 loss = closure()
+            with torch.enable_grad():
+                loss = closure()
 
         for group in self.param_groups:
             params_with_grad = []
@@ -155,7 +135,7 @@ class SkewAdam(optim.Optimizer):
                      exp_avgs: Params,
                      exp_avg_sqs: Params,
                      max_exp_avg_sqs: Params,
-                     state_steps: List[int],
+                     state_steps: list[int],
                      amsgrad: bool,
                      beta1: float,
                      beta2: float,
@@ -194,7 +174,7 @@ class SkewAdam(optim.Optimizer):
                 # Use the max. for normalizing running avg. of gradient
                 denom = max_exp_avg_sq.sqrt().add_(eps)
             else:
-                 denom = v_hat.sqrt().add_(eps)
+                denom = v_hat.sqrt().add_(eps)
 
             # Standard Adam update part
             adam_term = m_hat / denom
@@ -203,24 +183,24 @@ class SkewAdam(optim.Optimizer):
             skew_term = torch.zeros_like(param) # Initialize as zero
             if skew_gamma != 0.0 and param.numel() > 1:
                  # Flatten momentum estimate
-                 m_hat_flat = m_hat.flatten()
-                 num_elements = m_hat_flat.numel()
+                m_hat_flat = m_hat.flatten()
+                num_elements = m_hat_flat.numel()
 
-                 if num_elements > 1:
-                     # Roll to get m[i+1] and m[i-1]
-                     m_rolled_plus = torch.roll(m_hat_flat, shifts=-1, dims=0)
-                     m_rolled_minus = torch.roll(m_hat_flat, shifts=1, dims=0)
+                if num_elements > 1:
+                    # Roll to get m[i+1] and m[i-1]
+                    m_rolled_plus = torch.roll(m_hat_flat, shifts=-1, dims=0)
+                    m_rolled_minus = torch.roll(m_hat_flat, shifts=1, dims=0)
 
-                     # Handle boundaries: difference at boundary uses only the neighbor inside
-                     # Effectively, m[-1] = 0 and m[N] = 0
-                     m_rolled_plus[-1] = 0.0
-                     m_rolled_minus[0] = 0.0
+                    # Handle boundaries: difference at boundary uses only the neighbor inside
+                    # Effectively, m[-1] = 0 and m[N] = 0
+                    m_rolled_plus[-1] = 0.0
+                    m_rolled_minus[0] = 0.0
 
-                     # Calculate skew update: gamma * (m[i+1] - m[i-1])
-                     skew_update_flat = skew_gamma * (m_rolled_plus - m_rolled_minus)
+                    # Calculate skew update: gamma * (m[i+1] - m[i-1])
+                    skew_update_flat = skew_gamma * (m_rolled_plus - m_rolled_minus)
 
-                     # Reshape back to original parameter shape
-                     skew_term = skew_update_flat.view_as(param)
+                    # Reshape back to original parameter shape
+                    skew_term = skew_update_flat.view_as(param)
 
             # --- Combine terms ---
             update_direction = adam_term + skew_term
@@ -228,13 +208,3 @@ class SkewAdam(optim.Optimizer):
             # Apply final update
             param.add_(update_direction, alpha=-lr)
 
-
-# Example Usage (similar to how you'd use Adam)
-# model = YourModel()
-# optimizer = SkewAdam(model.parameters(), lr=0.001, skew_gamma=0.01)
-
-# Training loop:
-# optimizer.zero_grad()
-# loss = compute_loss(model(input), target)
-# loss.backward()
-# optimizer.step()

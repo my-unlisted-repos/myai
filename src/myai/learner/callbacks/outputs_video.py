@@ -8,7 +8,7 @@ import torch
 from torchvision.utils import make_grid
 
 from ...event_model import Callback, ConditionalCallback
-from ...transforms import normalize as _normalize, force_hw3
+from ...transforms import normalize as _normalize, to_HW3
 from ...torch_tools import pad_to_shape, overlay_segmentation, make_segmentation_overlay
 from ...video import OpenCVRenderer
 
@@ -64,7 +64,7 @@ class Renderer(Callback):
 
             # compose the final frame
             # all images must have the same shape so we make them 3hw
-            total = [force_hw3(i).moveaxis(-1, 0) for i in self.tiles if i is not None]
+            total = [to_HW3(i).moveaxis(-1, 0) for i in self.tiles if i is not None]
             if len(total) > 1:
 
                 # pad all images to the size of the largest image

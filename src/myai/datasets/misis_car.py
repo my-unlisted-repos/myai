@@ -11,6 +11,7 @@ import torch
 from torchvision.transforms import v2
 from tqdm import tqdm
 
+from .base import DATASETS_ROOT
 from ..data import DS
 from ..loaders.image import imreadtensor
 from ..torch_tools import pad_to_shape
@@ -38,7 +39,7 @@ def _image_to_float32(x):
     return image.to(torch.float32, copy=False), label
 
 
-root = r"E:\datasets\MDS-MISIS-DL Car classification"
+root = os.path.join(DATASETS_ROOT, "MDS-MISIS-DL Car classification")
 
 def _make():
     """decode all images and stack into a big array + labels array."""

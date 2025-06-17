@@ -1,76 +1,9 @@
+import math
+import warnings  # For potential padding warnings
+
 import torch
 import torch.optim as optim
 from torch.nn.utils import parameters_to_vector
-import math
-from typing import List, Optional, Tuple
-import warnings # For potential padding warnings
-
-# # --- Helper Function for Batched 2x2 Inverse Square Root (Unchanged) ---
-# # ... (keep the _inv_sqrt_2x2_batch function as before) ...
-# def oz(M: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
-#     """
-#     Computes the inverse square root of a batch of 2x2 matrices M.
-#     Handles positive definiteness by clamping and adding epsilon.
-#     M shape: (B, 2, 2)
-#     Output shape: (B, 2, 2)
-#     """
-#     if M.shape[-2:] != (2, 2):
-#         raise ValueError("Input tensor must be batches of 2x2 matrices")
-#     if M.ndim != 3:
-#          raise ValueError("Input tensor must have 3 dimensions (B, 2, 2)")
-
-#     B = M.shape[0]
-#     device = M.device
-#     dtype = M.dtype
-
-#     # Ensure symmetry (optional, but helps stability if input isn't perfectly symmetric)
-#     M = (M + M.transpose(-1, -2)) * 0.5
-
-#     a = M[:, 0, 0]
-#     b = M[:, 0, 1] # = M[:, 1, 0] due to symmetry
-#     d = M[:, 1, 1]
-
-#     # Determinant: ad - b^2
-#     det = a * d - b * b
-#     # Clamp determinant to be non-negative before sqrt
-#     clamped_det = torch.clamp_min(det, eps**2) # Use eps^2 as threshold
-#     s = torch.sqrt(clamped_det)
-
-#     # Trace: a + d
-#     trace = a + d
-
-#     # Denominator term in sqrt formula: sqrt(trace + 2*s)
-#     # Clamp the term inside sqrt to avoid nan/inf for matrices close to zero or negative semi-definite
-#     t_squared = trace + 2 * s
-#     clamped_t_squared = torch.clamp_min(t_squared, eps**2) # Use eps^2 as threshold
-#     t = torch.sqrt(clamped_t_squared)
-
-#     # Avoid division by zero using t + eps
-#     inv_t = 1.0 / (t + eps)
-
-#     # Calculate sqrt(M) = (M + s*I) / t
-#     # Add small identity multiple s*I before dividing by t
-#     # Expand s to (B, 1, 1) for broadcasting with identity
-#     s_expanded = s.view(B, 1, 1)
-#     identity = torch.eye(2, device=device, dtype=dtype).expand(B, 2, 2)
-
-#     # Compute S = sqrt(M)
-#     S = (M + s_expanded * identity) * inv_t.view(B, 1, 1)
-
-#     # Now compute inv(S) using the 2x2 inverse formula
-#     # inv(S) = (1/det(S)) * [[S_11, -S_01], [-S_10, S_00]]
-#     # Note: det(sqrt(M)) = sqrt(det(M)) = s
-#     det_S = s # Theoretical determinant of sqrt(M)
-#     # Avoid division by zero in inverse using det_S + eps
-#     inv_det_S = 1.0 / (det_S + eps)
-
-#     inv_S = torch.zeros_like(S)
-#     inv_S[:, 0, 0] = S[:, 1, 1] * inv_det_S
-#     inv_S[:, 0, 1] = -S[:, 0, 1] * inv_det_S
-#     inv_S[:, 1, 0] = -S[:, 1, 0] * inv_det_S
-#     inv_S[:, 1, 1] = S[:, 0, 0] * inv_det_S
-
-#     return inv_S
 
 
 def _inv_sqrt_2x2_batch(A: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
@@ -115,7 +48,7 @@ def _inv_sqrt_2x2_batch(A: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
 class RecursivePreconditionedAdam(optim.Optimizer):
     """
     Implements Adam with recursive 2x2 block preconditioning replacing the
-    second moment estimate. Uses efficient padding based on number of levels.
+    second moment estimate.
 
     Args:
         params (iterable): Iterable of parameters to optimize or dicts defining
@@ -143,7 +76,7 @@ class RecursivePreconditionedAdam(optim.Optimizer):
         if len(self.param_groups) > 1:
             raise ValueError("RecursivePreconditionedAdam doesn't support multiple parameter groups yet.")
 
-        self._params: List[torch.Tensor] = self.param_groups[0]['params']
+        self._params: list[torch.Tensor] = self.param_groups[0]['params']
         self._numel_total: int = sum(p.numel() for p in self._params if p.requires_grad)
 
         # --- Efficient Padding Calculation ---
@@ -159,9 +92,9 @@ class RecursivePreconditionedAdam(optim.Optimizer):
             # Determine the target number of levels
             target_levels = max_possible_levels
             if max_levels is not None and max_levels >= 0:
-                 target_levels = min(max_possible_levels, max_levels)
-                 # If max_levels is 0, we use 0 levels.
-                 if max_levels == 0: target_levels = 0
+                target_levels = min(max_possible_levels, max_levels)
+                # If max_levels is 0, we use 0 levels.
+                if max_levels == 0: target_levels = 0
 
 
             if target_levels > 0:
@@ -185,9 +118,9 @@ class RecursivePreconditionedAdam(optim.Optimizer):
         # Ensure padded is at least original and even if non-zero
         self._padded_numel = max(self._numel_total, self._padded_numel)
         if self._padded_numel > 0 and self._padded_numel % 2 != 0:
-             # This case should technically be covered by granularity logic if L>=1
-             # but as a safeguard, make it even.
-             self._padded_numel += 1
+            # This case should technically be covered by granularity logic if L>=1
+            # but as a safeguard, make it even.
+            self._padded_numel += 1
 
 
         # print(f"RecursivePreconditionedAdam initialized:")
@@ -234,7 +167,7 @@ class RecursivePreconditionedAdam(optim.Optimizer):
 
 
     # --- _get_flat_grad (Unchanged) ---
-    def _get_flat_grad(self) -> Optional[torch.Tensor]:
+    def _get_flat_grad(self) -> torch.Tensor | None:
         """Concatenates gradients into a single flat vector, filling zeros for missing grads."""
         grads = []
         any_valid_grad = False
@@ -252,23 +185,23 @@ class RecursivePreconditionedAdam(optim.Optimizer):
                     dtype = p.grad.dtype
                 break # Found context, exit loop
         if device is None: # No parameters require grad
-             return None
+            return None
 
         for p in self._params:
             if p.requires_grad:
                 if p.grad is not None:
-                     if p.grad.is_sparse:
-                         raise RuntimeError('RecursivePreconditionedAdam does not support sparse gradients')
-                     grads.append(p.grad.detach().reshape(-1))
-                     any_valid_grad = True
+                    if p.grad.is_sparse:
+                        raise RuntimeError('RecursivePreconditionedAdam does not support sparse gradients')
+                    grads.append(p.grad.detach().reshape(-1))
+                    any_valid_grad = True
                 else:
                      # If requires_grad is True but grad is None, fill with zeros
-                     grads.append(torch.zeros(p.numel(), device=device, dtype=dtype))
+                    grads.append(torch.zeros(p.numel(), device=device, dtype=dtype))
             # else: parameter does not require grad, skip
 
         if not any_valid_grad and self._numel_total > 0:
              # Pass - grads list will contain all zeros if needed
-             pass
+            pass
 
         if not grads: # No parameters required grad
             return None
@@ -276,13 +209,12 @@ class RecursivePreconditionedAdam(optim.Optimizer):
         flat_grad = torch.cat(grads)
 
         if flat_grad.numel() != self._numel_total:
-             # Check consistency after potential zero-filling
-             raise RuntimeError(f"Internal error: Total gradient elements ({flat_grad.numel()}) mismatch expected ({self._numel_total})")
+            # Check consistency after potential zero-filling
+            raise RuntimeError(f"Internal error: Total gradient elements ({flat_grad.numel()}) mismatch expected ({self._numel_total})")
         return flat_grad
 
     @torch.no_grad()
     def step(self, closure=None):
-        """Performs a single optimization step."""
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -334,9 +266,9 @@ class RecursivePreconditionedAdam(optim.Optimizer):
                 # Level k uses the first N_pad / 2^k elements
                 segment_len = self._padded_numel // (2**k)
                 if segment_len < expected_elements_k:
-                     print(f"Warning: P update grad segment size ({segment_len}) insufficient for level {k} ({expected_elements_k}). Skipping.")
-                     # This indicates an issue with padding/level calculation logic
-                     break
+                    print(f"Warning: P update grad segment size ({segment_len}) insufficient for level {k} ({expected_elements_k}). Skipping.")
+                    # This indicates an issue with padding/level calculation logic
+                    break
 
                 # Reshape the *start* of the padded gradient vector appropriately
                 g_segment = padded_grad[:expected_elements_k] # P_k works on pairs, so takes 2*num_blocks elements
@@ -404,7 +336,7 @@ class RecursivePreconditionedAdam(optim.Optimizer):
 
                 # Apply weight decay (AdamW style)
                 if weight_decay != 0:
-                     p.add_(p, alpha= -lr * weight_decay)
+                    p.add_(p, alpha= -lr * weight_decay)
 
                 # Apply main update step
                 p.add_(delta, alpha=-lr)
@@ -412,6 +344,6 @@ class RecursivePreconditionedAdam(optim.Optimizer):
                 offset += numel
 
         if offset != self._numel_total:
-             print(f"Warning: Offset ({offset}) != total elements ({self._numel_total}) after update.")
+            print(f"Warning: Offset ({offset}) != total elements ({self._numel_total}) after update.")
 
         return loss

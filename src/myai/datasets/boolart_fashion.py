@@ -9,6 +9,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+from .base import DATASETS_ROOT
 from ..data import DS
 from ..loaders.image import imreadtensor
 from ..torch_tools import pad_to_shape
@@ -33,7 +34,7 @@ def _preprocess(x):
 
 
 # class _BoolArtFashion(Dataset):
-root = r"E:\datasets\BoolArt-Image-Classification"
+root = os.path.join(DATASETS_ROOT, "BoolArt-Image-Classification")
 
 def _make():
     """decode all images and stack into a big array + labels array."""

@@ -1,14 +1,11 @@
+import math
+
 import torch
 from torch.optim.optimizer import Optimizer
-import math
 
 
 class AQNLR(Optimizer):
     """Adaptive Quasi-Newton with Low-Rank Approximation optimizer.
-
-    This optimizer is designed for extremely ill-conditioned problems with
-    off-diagonal Hessian elements. It combines diagonal preconditioning (like Adam)
-    with a low-rank approximation of curvature information.
 
     Args:
         params (iterable): iterable of parameters to optimize or dicts defining
@@ -25,37 +22,14 @@ class AQNLR(Optimizer):
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
                  weight_decay=0, rank=1, clip_threshold=10.0):
-        if not 0.0 <= lr:
-            raise ValueError(f"Invalid learning rate: {lr}")
-        if not 0.0 <= eps:
-            raise ValueError(f"Invalid epsilon value: {eps}")
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
-        if not 0.0 <= weight_decay:
-            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
-        if not 1 <= rank:
-            raise ValueError(f"Invalid rank value: {rank}")
-        if not 0.0 <= clip_threshold:
-            raise ValueError(f"Invalid clip_threshold value: {clip_threshold}")
 
         defaults = dict(lr=lr, betas=betas, eps=eps,
                         weight_decay=weight_decay, rank=rank,
                         clip_threshold=clip_threshold)
-        super(AQNLR, self).__init__(params, defaults)
-
-    def __setstate__(self, state):
-        super(AQNLR, self).__setstate__(state)
+        super().__init__(params, defaults)
 
     @torch.no_grad()
     def step(self, closure=None):
-        """Performs a single optimization step.
-
-        Args:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
-        """
         loss = None
         if closure is not None:
             with torch.enable_grad():

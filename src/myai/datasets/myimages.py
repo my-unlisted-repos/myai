@@ -9,19 +9,20 @@ import torch
 from torchvision.transforms import v2
 from tqdm import tqdm
 
+from .base import DATASETS_ROOT
 from ..data import DS
 from ..loaders.image import imreadtensor
 from ..python_tools import get_all_files
 from ..torch_tools import pad_to_shape
-from ..transforms import force_hw3, resize_to_contain, resize_to_fit
+from ..transforms import to_HW3, resize_to_contain, resize_to_fit
 
 
 def preprocess(x:torch.Tensor, resize_fn, size: tuple[int,int]):
-    """resizes images to contain size*size square and crop to that square and znormalize and make sure 4 channels"""
+    """resizes images to contain size*size square and crop to that square and znormalize and make sure 4 channels sybau icl tc pmo"""
     if size[0] != size[1]: raise NotImplementedError(size)
 
     # make sure it (4, H, W)
-    x = force_hw3(x, allow_4_channels=True).moveaxis(-1, 0)
+    x = to_HW3(x, allow_4_channels=True).moveaxis(-1, 0)
     if x.shape[0] == 3: x = torch.cat([x, torch.full_like(x[0], 255)[None]])
 
     x = resize_fn(x, size[0], antialias=False)
@@ -38,12 +39,12 @@ def preprocess(x:torch.Tensor, resize_fn, size: tuple[int,int]):
 
 extensions = ['jpg', 'png', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'avif', 'jfif']
 
-root = r"E:\datasets\My Images"
+root = os.path.join(DATASETS_ROOT, "My Images")
 
 def _make(resize_fn = resize_to_contain, size = (128, 128), add_ui_stuff=False):
     """decode all images and stack into a big array can also add ui stuff to make it harder."""
-    images = get_all_files(r'F:\Stuff\Images', extensions=extensions)
-    if add_ui_stuff: images.extend(get_all_files(r'F:\Stuff 2\.themes\Orchis-Indigo-Compact', extensions=extensions))
+    images = get_all_files(r'/var/mnt/ssd/Files/Documents/Изображения', extensions=extensions)
+    if add_ui_stuff: images.extend(get_all_files(r'/var/mnt/ssd/Files/.themes/Orchis-Indigo-Compact', extensions=extensions))
 
     dataset = []
     for im in tqdm(images):

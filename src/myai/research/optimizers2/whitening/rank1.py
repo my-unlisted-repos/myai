@@ -11,20 +11,6 @@ class GraND(Optimizer):
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), beta_u=0.99,
                  C=1.0, eps=1e-8, weight_decay=0):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
-        if not 0.0 <= beta_u < 1.0:
-            raise ValueError("Invalid beta_u parameter: {}".format(beta_u))
-        if not 0.0 <= C:
-            raise ValueError("Invalid damping coefficient C: {}".format(C))
-        if not 0.0 <= weight_decay:
-             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
 
         defaults = dict(lr=lr, betas=betas, beta_u=beta_u, C=C, eps=eps,
                         weight_decay=weight_decay)
@@ -46,14 +32,8 @@ class GraND(Optimizer):
         if 'shared_step' not in self.state:
              self.state['shared_step'] = 0
 
-    @torch.no_grad()
+    @torch.no_grad
     def step(self, closure=None):
-        """Performs a single optimization step.
-
-        Arguments:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
-        """
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -226,27 +206,6 @@ class GraNDScaleFree(Optimizer):
                  beta_u=0.99, beta_rms=0.999, C=1.0, eps_scale=1e-30,
                  eps_adam=1e-8, eps_rms=1e-8, weight_decay=0, use_sqrt_decay=True):
 
-        if not 0.0 < lr:
-            raise ValueError("Invalid relative_step_size: {}".format(lr))
-        if not 0.0 <= eps_scale:
-            raise ValueError("Invalid eps_scale value: {}".format(eps_scale))
-        if not 0.0 <= eps_adam:
-             raise ValueError("Invalid eps_adam value: {}".format(eps_adam))
-        if not 0.0 <= eps_rms:
-             raise ValueError("Invalid eps_rms value: {}".format(eps_rms))
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
-        if not 0.0 <= beta_u < 1.0:
-            raise ValueError("Invalid beta_u parameter: {}".format(beta_u))
-        if not 0.0 <= beta_rms < 1.0:
-            raise ValueError("Invalid beta_rms parameter: {}".format(beta_rms))
-        if not 0.0 <= C:
-            raise ValueError("Invalid damping coefficient C: {}".format(C))
-        if not 0.0 <= weight_decay:
-             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
-
         defaults = dict(lr=lr, betas=betas,
                         beta_u=beta_u, beta_rms=beta_rms, C=C,
                         eps_scale=eps_scale, eps_adam=eps_adam, eps_rms=eps_rms,
@@ -271,7 +230,7 @@ class GraNDScaleFree(Optimizer):
         if 'shared_step' not in self.state:
              self.state['shared_step'] = 0
 
-    @torch.no_grad()
+    @torch.no_grad
     def step(self, closure=None):
         loss = None
         if closure is not None:

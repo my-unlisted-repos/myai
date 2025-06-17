@@ -1,11 +1,12 @@
-import torch
-import torch.optim as optim
-from torch.optim.optimizer import Optimizer
 import math
 import warnings
 
-# Helper function to create Vandermonde matrix
-def vandermonde(points, degree):
+import torch
+import torch.optim as optim
+from torch.optim.optimizer import Optimizer
+
+
+def voldemort(points, degree):
     """
     Creates a Vandermonde matrix.
     V[i, j] = points[i] ** j
@@ -53,20 +54,6 @@ class AdamV(Optimizer):
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
                  weight_decay=0, k=10, amsgrad=False, vandermonde_points='linspace'):
 
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
-        if not 0.0 <= weight_decay:
-            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
-        if not isinstance(k, int) or k <= 0:
-            raise ValueError("Invalid k value: {} (must be positive integer)".format(k))
-        if vandermonde_points != 'linspace':
-             raise ValueError("Only 'linspace' is supported for vandermonde_points currently.")
 
         defaults = dict(lr=lr, betas=betas, eps=eps,
                         weight_decay=weight_decay, k=k,
@@ -99,7 +86,7 @@ class AdamV(Optimizer):
         points = torch.linspace(-1, 1, dim, device=device, dtype=torch.float32) # Use float32 for stability
 
         # Create Vandermonde matrix B (dim x k_eff). Degree is k_eff - 1.
-        B = vandermonde(points, k_eff - 1)
+        B = voldemort(points, k_eff - 1)
 
         # Optional: Normalize columns of B for better conditioning
         # This might deviate from a pure Vandermonde structure but improves stability
@@ -114,13 +101,8 @@ class AdamV(Optimizer):
         self._basis_cache[cache_key] = (B, B_T)
         return B, B_T, k_eff
 
-    @torch.no_grad()
+    @torch.no_grad
     def step(self, closure=None):
-        """Performs a single optimization step.
-        Args:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
-        """
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -173,9 +155,9 @@ class AdamV(Optimizer):
                         state['max_exp_avg_sq_proj'] = torch.zeros(k_eff, dtype=p.dtype, device=p.device)
                 # Ensure state tensors for projected values match k_eff if k changed or first step
                 elif state['exp_avg_sq_proj'].shape[0] != k_eff:
-                     state['exp_avg_sq_proj'] = torch.zeros(k_eff, dtype=p.dtype, device=p.device)
-                     if amsgrad:
-                         state['max_exp_avg_sq_proj'] = torch.zeros(k_eff, dtype=p.dtype, device=p.device)
+                    state['exp_avg_sq_proj'] = torch.zeros(k_eff, dtype=p.dtype, device=p.device)
+                    if amsgrad:
+                        state['max_exp_avg_sq_proj'] = torch.zeros(k_eff, dtype=p.dtype, device=p.device)
 
 
                 exp_avg = state['exp_avg']

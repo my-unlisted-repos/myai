@@ -20,7 +20,6 @@ from ..python_tools import (
     maybe_compose,
 )
 from ..rng import RNG, Seed
-from ..torch_tools import maybe_to
 
 
 class Sample:
@@ -151,15 +150,15 @@ class DS(abc.Sequence[R]):
 
     # def dataloader[D:Callable](self, batch_size: int, shuffle: bool, seed: int | None = None, cls: D = LightDataLoader) -> D:
     def dataloader(self, batch_size: int, shuffle: bool, seed: int | None = None, cls: type[X] = LightDataLoader) -> X:
-        return cls(self, batch_size = batch_size, shuffle = shuffle, seed=seed)
+        return cls(self, batch_size = batch_size, shuffle = shuffle, seed=seed) # pyright:ignore[reportCallIssue]
 
     def stack(self, dtype=None, device=None):
         samples = list(i for i in self)
-        if isinstance(samples[0], torch.Tensor): tensors = maybe_to(torch.stack(samples), dtype=dtype, device=device)
+        if isinstance(samples[0], torch.Tensor): tensors = torch.stack(samples).to(dtype=dtype, device=device)
         else:
             if not isinstance(dtype, Sequence): dtype = [dtype for _ in range(len(samples[0]))]
             if not isinstance(device, Sequence): device = [device for _ in range(len(samples[0]))]
-            tensors = [maybe_to(torch.stack([sample[i] if isinstance(sample[i], torch.Tensor) else torch.as_tensor(sample[i]) for sample in samples]), dtype=dt, device = de) for i, dt, de in zip(range(len(samples[0])), dtype, device)]
+            tensors = [torch.stack([sample[i] if isinstance(sample[i], torch.Tensor) else torch.as_tensor(sample[i]) for sample in samples]).to(dtype=dt, device = de) for i, dt, de in zip(range(len(samples[0])), dtype, device)]
         return tensors
 
     def tensor_dataloader(self, batch_size: int, shuffle: bool, memory_efficient:bool = False, seed: int | None = None, dtype = None, device=None):
@@ -334,7 +333,7 @@ class DS(abc.Sequence[R]):
             other_dims = [d for d in range(sample.ndim) if d+1 not in dim]
 
             # create mean and std counters
-            if mean is None:
+            if mean is None or std is None:
                 if len(dim) == 0:
                     mean = 0; std = 0
                 else:
