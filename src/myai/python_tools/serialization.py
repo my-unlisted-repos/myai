@@ -7,7 +7,7 @@ Serializeable = int | float | str | bool
 
 def make_dict_serializeable(
     x: Mapping,
-    maxstr=1000,
+    maxstr=None,
     recursive=False,
     allowed_types=SERIALIZEABLE_TYPES,
     type_handlers: dict[type, Callable[[T.Any], T.Any]] | None = None,

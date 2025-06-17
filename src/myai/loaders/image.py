@@ -9,8 +9,6 @@ import PIL.Image
 import torch
 import torchvision.io
 
-from ..transforms import to_HW3, intensity, tonumpy
-
 if importlib.util.find_spec('cv2') is not None: import cv2 # pylint: disable=import-error # type:ignore
 else: cv2 = cast(Any, None)
 
@@ -63,6 +61,7 @@ def imreadtensor(path:str, dtype=None, device=None):
 
 def imwrite(x:np.ndarray | torch.Tensor, outfile:str, mkdir=False, normalize=True, compression = 9, optimize=True):
     """if normalize is False, x must be a UINT8 IMAGE WITH VALUES FROM 0 TO 255"""
+    from ..transforms import to_HW3, intensity, tonumpy
     x = tonumpy(to_HW3(x))
     if normalize: x = intensity.normalize(x, 0, 255).astype(np.uint8) # type:ignore
     if mkdir and not os.path.exists(os.path.dirname(outfile)): os.mkdir(os.path.dirname(outfile))

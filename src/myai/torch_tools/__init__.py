@@ -4,7 +4,6 @@ if sys.version_info[1] < 12:
     from .p311 import *
 else:
     from .compile import maybe_compile
-    from .conversion import *
     from .crop_ import crop, crop_like, crop_to_shape, spatial_crop
     from .deprecated import crop_around
     from .devices import *

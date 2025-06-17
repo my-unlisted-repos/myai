@@ -2,7 +2,6 @@ import numpy as np
 import pedalboard
 import torch
 
-from ..transforms import tonumpy
 
 
 def audioread(path) -> tuple[np.ndarray, int]:
@@ -26,6 +25,7 @@ def audiowrite(file: str, arr, sr: int):
         arr (Any): array, can be channel first or channel last or 1d.
         sr (int): sample rate.
     """
+    from ..transforms import tonumpy
     arr = tonumpy(arr)
     arr = arr.squeeze()
     if arr.ndim == 1: arr = arr[None, :]

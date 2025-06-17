@@ -1,31 +1,19 @@
-"""This used to be a class now its just a template for a dataset."""
-import os
-import typing
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
 
-import numpy as np
-import torch
+from ..data import DS
 
-DATASETS_ROOT = r'/var/mnt/hdd/Datasets'
-root: str = '???'
+DATASETS_ROOT = '/var/mnt/hdd/Datasets'
 
+class Dataset(DS, ABC):
+    def submission(self, fname, model, *args, **kwargs):
+        """makes a submission file, if applicable"""
+        raise NotImplementedError(f"{self.__class__.__name__} doesn't implement `make_val_submission`")
 
-def _make(*args, **kwargs) -> torch.Tensor | list[torch.Tensor] | typing.Any:
-    """download or create the dataset and stack it into arrays, return the arrays."""
-    raise NotImplementedError
+    def preprocess(self, inputs: Sequence, *args, **kwargs):
+        """loads and prepocesses a sequence of inputs, applies same transforms as :code:`load`."""
+        raise NotImplementedError(f"{self.__class__.__name__} doesn't implement `preprocess`")
 
-def _save(*args, **kwargs):
-    """save dataset arrays to disk for fast loading."""
-    images, labels = _make()
-    np.savez_compressed(os.path.join(root, 'train.npz'), images=images, labels = labels)
-
-def get(*args, **kwargs):
-    """load dataset saved by `_save`."""
-    raise NotImplementedError
-
-def make_val_submission(outfile, model, *args, **kwargs):
-    """make a submission file"""
-    raise NotImplementedError
-
-def inference(self, model, input, *args, **kwargs):
-    """run inference on some file, applies same transforms to it as `_make` / `get`."""
-    raise NotImplementedError
+    def inference(self, model, inputs: Sequence, *args, **kwargs):
+        """run inference on a sequence of input, applies same transforms as :code:`load`."""
+        return model(self.preprocess(inputs, *args, **kwargs))

@@ -53,7 +53,7 @@ def format_number(n):
     Numbers with single trailing digit below 0.1 are converted to scientific notation: 0.01 -> 1e-2.
 
     All numbers are rounded to three significant digits: 0.008431 -> 0.00843.
-    
+
     Numbers below 0.001 are always converted to scientific notation: 0.0008431 -> 8.431e-4.
 
     :param n: _description_

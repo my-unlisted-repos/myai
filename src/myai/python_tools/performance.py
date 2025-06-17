@@ -13,8 +13,8 @@ def clean_mem():
     """
 
     # h/t Piotr Czapla
-    import sys
     import gc
+    import sys
     import traceback
     if hasattr(sys, 'last_traceback'):
         traceback.clear_frames(sys.last_traceback)

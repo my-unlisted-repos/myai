@@ -11,7 +11,7 @@ type Composable[**P, R] = Callable[P, R] | Iterable[Callable[P, R]]
 
 class Compose:
     """Compose multiple functions into a single function. Note that functions will be flattened."""
-    __slots__ = ['functions']
+    __slots__ = ('functions', )
     def __init__(self, *functions: Composable):
         self.functions = flatten(functions)
 
@@ -56,7 +56,7 @@ def get_full_signature[**P2](fn: Callable[P2, T.Any], *args: P2.args, **kwargs: 
     return sig.arguments
 
 class Split:
-    __slots__ = ['functions']
+    __slots__ = ('functions', )
     def __init__(self, *functions: Composable | None):
         self.functions = [maybe_compose(i) for i in functions]
 
