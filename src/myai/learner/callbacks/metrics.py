@@ -1,18 +1,17 @@
 import time
-import typing as T
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-
+from typing import Any, Literal, TYPE_CHECKING
 import numpy as np
 import torch
 
 from ...event_model import Callback
-from ...torch_tools.conversion import maybe_detach_cpu
+from ...transforms import maybe_detach_cpu
 from ...metrics import accuracy, dice, iou, binary_accuracy
 from ...torch_tools import batched_raw_preds_to_one_hot
 
-if T.TYPE_CHECKING:
+if TYPE_CHECKING:
     from ..learner import Learner
 
 
@@ -65,7 +64,7 @@ class Metric(Callback, ABC):
             )
 
     @abstractmethod
-    def __call__(self, learner: "Learner") -> T.Any:
+    def __call__(self, learner: "Learner") -> Any:
         """Evaluate the metric. Please make sure returned value is detached and on CPU."""
 
     def after_train_step(self, learner: "Learner"):
@@ -134,7 +133,7 @@ class PerClassMetric(Callback, ABC):
             )
 
     @abstractmethod
-    def __call__(self, learner: "Learner") -> T.Any:
+    def __call__(self, learner: "Learner") -> Any:
         """Evaluate the metric. Please make sure returned value is detached and on CPU."""
 
     def after_train_step(self, learner: "Learner"):

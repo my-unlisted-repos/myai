@@ -12,8 +12,6 @@ from ..torch_tools import pad_to_shape
 
 ROOT = os.path.join(DATASETS_ROOT, "BoolArt-Fashion")
 
-
-# WRONG
 MEAN = torch.tensor([[
     [[217.7353]],
     [[213.3106]],
@@ -36,7 +34,7 @@ class BoolArtFashion(Dataset):
     """
     inputs: 35,551 images 3×80×60. Entire dataset is z-normalized per-channel.
 
-    targets: 44 classes, each image has integer label 0 to 43.
+    targets: 44 classes, each image has int64 label 0 to 43.
 
     Extremely imbalanced, some classes have 10000 samples and some have a single sample.
     """
@@ -62,8 +60,8 @@ class BoolArtFashion(Dataset):
             images = [_preprocess(imreadtensor(p)) for p in image_paths]
 
             # stack
-            images = torch.stack([i for i in images]).to(torch.float32)
-            labels = torch.tensor([i[1] for i in items], dtype=torch.int64)
+            images = torch.stack(images).to(dtype=torch.float32)
+            labels = torch.tensor([int(i[1]) for i in items], dtype=torch.int64)
 
             # znormalize
             images -= MEAN
@@ -76,15 +74,18 @@ class BoolArtFashion(Dataset):
         samples = [(torch.from_numpy(i).to(device), torch.tensor(l, device=device, dtype=torch.int64)) for i, l in zip(images, labels)]
         self.add_samples_(samples)
 
+    def batched_preprocess(self, inputs, device=None):
+        from ..transforms import totensor, to_3HW
+        inputs = torch.stack([_preprocess(to_3HW(totensor(i, device=device, dtype=torch.float32))) for i in inputs])
+        inputs -= MEAN
+        inputs /= STD
+        return inputs
 
-
-    def submission(self, fname, model, batch_size = 32):
+    def submission(self, fname, model, batch_size = 32, device=None):
         """make a submission csv"""
         submission = "id,predict\n"
         for ids in itertools.batched(tqdm(os.listdir(os.path.join(self.path, "test_image"))), batch_size):
-            inputs = torch.stack([_preprocess(imreadtensor(os.path.join(self.path, "test_image", f), dtype=torch.float32)) for f in ids])
-            inputs -= MEAN
-            inputs /= STD
+            inputs = self.batched_preprocess([os.path.join(self.path, "test_image", f) for f in ids], device=device)
 
             outputs = model(inputs)
             submission += '\n'.join([f'{i.replace(".jpg", "")},{int(o)}' for i, o in zip(ids, outputs.argmax(1).detach().cpu())])

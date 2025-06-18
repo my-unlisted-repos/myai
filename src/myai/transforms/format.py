@@ -48,9 +48,8 @@ def to_HWC(x: torch.Tensor | np.ndarray, strict: bool=False) -> torch.Tensor | n
             raise ValueError(f"to_HWC got a tensor of invalid shape {x.shape}")
 
         # first dimension is not channel dimension, take central slice
-        else:
-            if x.shape[0] == 1: x = x[0]
-            else: x = x[x.shape[0] // 2]
+        if x.shape[0] == 1: x = x[0]
+        else: x = x[x.shape[0] // 2]
 
     # create channel dimension if it doesn't exist
     if x.ndim == 2: x = x[:,:,None]
@@ -193,7 +192,7 @@ def maybe_detach_cpu_recursive(x):
 
 def to_numpy_recursive(x) -> np.ndarray:
     """Converts x to numpy array if it is not already one. If sequence of tensors, ensures it is detached and on CPU, RECURSIVELY. Can be slow!"""
-    if isinstance(x, str): raise RuntimeError(f'ensure_numpy_recursive got string "{x}"')
+    if isinstance(x, str): raise RuntimeError(f'to_numpy_recursive got string "{x}"')
     if isinstance(x, torch.Tensor):
         return x.detach().cpu().numpy()
     if isinstance(x, np.ndarray):
@@ -206,5 +205,3 @@ def to_numpy_or_none_recursive(x) -> np.ndarray | None:
     """Converts x to numpy array if it is not already one. If tensor, ensures it is detached and on CPU, RECURSIVELY. Can be slow! If None, returns None."""
     if x is None: return None
     return to_numpy_recursive(x)
-
-

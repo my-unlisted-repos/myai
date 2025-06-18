@@ -16,14 +16,15 @@ from ..python_tools import (
     method2method,
     method2method_return_override,
 )
-from ..torch_tools import (
-    ensure_numpy_or_none_recursive,
-    ensure_numpy_recursive,
-    make_segmentation_overlay,
+from ..transforms import (
+    to_numpy_or_none,
+    to_numpy_recursive,
+    to_numpy_or_none_recursive,
     maybe_detach_cpu,
     maybe_detach_cpu_recursive,
-    maybe_ensure_pynumber,
+    tofloat,
 )
+from ..torch_tools import make_segmentation_overlay
 from ..transforms import tonumpy, totensor
 from ._norm import _normalize
 from ._types import _FontSizes, _K_Collection, _K_Figure, _K_Line2D, _K_Text
@@ -66,7 +67,7 @@ def _get_grid(x, y, z, mode:Literal["linear", "nearest", "clough", "rbf"], xlim,
 def _prepare_data_for_plotting(*data, x, y, ensure_x=False):
     if len(data) == 1:
         if (x is not None) and (y is not None): raise ValueError('both args and x or y are specified!')
-        d = ensure_numpy_recursive(data[0])
+        d = to_numpy_recursive(data[0])
         # data is 1d array
         if d.ndim == 1:
             if y is not None: x = data[0]
@@ -89,8 +90,8 @@ def _prepare_data_for_plotting(*data, x, y, ensure_x=False):
     elif len(data) > 2: raise ValueError(f"got too many args {len(data) = }")
 
     if y is None: raise ValueError('No data to plot')
-    x = ensure_numpy_or_none_recursive(x)
-    y = ensure_numpy_recursive(y)
+    x = to_numpy_or_none_recursive(x)
+    y = to_numpy_recursive(y)
 
     if ensure_x and x is None: x = np.arange(0, len(x), 1) # type:ignore
     return x, y
@@ -195,10 +196,10 @@ class _Plot:
 
         if len(args) > 0:
             args = list(args)
-            args[0] = _normalize(_prepare_image_for_plotting(ensure_numpy_recursive(args[0])), norm)
+            args[0] = _normalize(_prepare_image_for_plotting(to_numpy_recursive(args[0])), norm)
 
         elif 'X' in kwargs:
-            kwargs['X'] = _normalize(_prepare_image_for_plotting(ensure_numpy_recursive(kwargs['X'])), norm)
+            kwargs['X'] = _normalize(_prepare_image_for_plotting(to_numpy_recursive(kwargs['X'])), norm)
 
         self.ax.imshow(*args, **kwargs)
         return self
@@ -239,7 +240,7 @@ class _Plot:
         pad_value: float = 0,
         **kwargs,
     ):
-        x = torch.from_numpy(ensure_numpy_recursive(x))
+        x = torch.from_numpy(to_numpy_recursive(x))
         # add channel dim
         if x.ndim == 3: x = x.unsqueeze(1)
         # ensure channel first
@@ -330,17 +331,17 @@ class _Plot:
         linewidths = None,
         linestyles = None,
     ):
-        x = ensure_numpy_recursive(x)
-        y = ensure_numpy_recursive(y)
-        z = ensure_numpy_recursive(z)
+        x = to_numpy_recursive(x)
+        y = to_numpy_recursive(y)
+        z = to_numpy_recursive(z)
         X, Y, Z = _get_grid(x=x, y=y, z=z, mode=mode, xlim=xlim, ylim=ylim, zlim=zlim, step=step)
         self.ax.contour(X, Y, Z, levels=levels, cmap=cmap, alpha = alpha, norm = norm, linewidths = linewidths, linestyles=linestyles)
         return self
 
     def contourf(self, x, y, z, levels=10, step = 300, cmap = None, mode:Literal["linear", "nearest", "clough", "rbf"] = 'linear', xlim = None, ylim = None, zlim = None, alpha = None):
-        x = ensure_numpy_recursive(x)
-        y = ensure_numpy_recursive(y)
-        z = ensure_numpy_recursive(z)
+        x = to_numpy_recursive(x)
+        y = to_numpy_recursive(y)
+        z = to_numpy_recursive(z)
         X, Y, Z = _get_grid(x=x, y=y, z=z, mode=mode, xlim=xlim, ylim=ylim, zlim=zlim, step=step)
         self.ax.contourf(X, Y, Z, levels=levels, cmap=cmap, alpha = alpha)
         return self
@@ -365,9 +366,9 @@ class _Plot:
         norm = None,
         antialiased: bool = True,
     ):
-        x = ensure_numpy_recursive(x)
-        y = ensure_numpy_recursive(y)
-        z = ensure_numpy_recursive(z)
+        x = to_numpy_recursive(x)
+        y = to_numpy_recursive(y)
+        z = to_numpy_recursive(z)
         X, Y, Z = _get_grid(x=x, y=y, z=z, mode=mode, xlim=xlim, ylim=ylim, zlim=zlim, step=step)
         self.ax.pcolormesh(X, Y, Z, cmap=cmap, alpha = alpha, shading = shading, antialiased = antialiased, zorder=0, norm=norm)
         if contour: self.contour(x,y,z, levels=contour_levels, step=step, cmap=contour_cmap, mode=mode, alpha=contour_alpha, xlim=xlim, ylim=ylim, zlim=zlim, norm=norm)
@@ -393,11 +394,11 @@ class _Plot:
         minlength: float = 1,
         color: Any = None,
     ):
-        x = ensure_numpy_recursive(x)
-        y = ensure_numpy_recursive(y)
-        u = ensure_numpy_recursive(u)
-        v = ensure_numpy_recursive(v)
-        c = ensure_numpy_recursive(c)
+        x = to_numpy_recursive(x)
+        y = to_numpy_recursive(y)
+        u = to_numpy_recursive(u)
+        v = to_numpy_recursive(v)
+        c = to_numpy_recursive(c)
         loc = locals().copy()
         del loc["self"], loc["x"], loc["y"], loc["u"], loc["v"], loc["c"]
         args = [i for i in (x,y,u,v,c) if i is not None]
@@ -557,9 +558,9 @@ class _Plot:
         return self
 
     def line(self, xy1: tuple[float, float] | Any,xy2: tuple[float, float] | None | Any = None, slope = None, **kwargs: Unpack[_K_Line2D]):
-        xy1 = tuple(ensure_numpy_recursive(xy1).tolist())
-        if xy2 is not None: xy2 = tuple(ensure_numpy_recursive(xy2).tolist())
-        slope = maybe_ensure_pynumber(slope)
+        xy1 = tuple(to_numpy_recursive(xy1).tolist())
+        if xy2 is not None: xy2 = tuple(to_numpy_recursive(xy2).tolist())
+        slope = tofloat(slope) if slope is not None else None
         self.ax.axline(xy1, xy2, slope=slope, **kwargs)
         return self
 

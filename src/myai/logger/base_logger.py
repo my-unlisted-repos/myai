@@ -1,5 +1,4 @@
 import logging
-import typing as T
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, Mapping, MutableMapping
 from typing import Any, Literal, Unpack
@@ -9,7 +8,7 @@ import torch
 
 from ..plt_tools._types import _K_Collection, _K_Line2D
 from ..plt_tools.fig import Fig
-from ..torch_tools import maybe_ensure_pynumber
+from ..transforms import tofloat
 
 def numel(x:np.ndarray | torch.Tensor):
     if isinstance(x, np.ndarray): return x.size
@@ -17,7 +16,7 @@ def numel(x:np.ndarray | torch.Tensor):
 class BaseLogger(MutableMapping[str, Any], ABC):
 
     @abstractmethod
-    def log(self, step: int, metric: str, value: T.Any) -> None:
+    def log(self, step: int, metric: str, value: Any) -> None:
         """Log metric value for a given step."""
         # for example
         # self[metric][step] = value
@@ -82,7 +81,7 @@ class BaseLogger(MutableMapping[str, Any], ABC):
         idx = np.abs(steps - idx).argmin().item()
         return self[key][int(idx)]
 
-    def list_values(self, key: str) -> list[T.Any]:
+    def list_values(self, key: str) -> list[Any]:
         """Returns items under `key` as list. Step is ignored."""
         return list(self[key].values())
 
@@ -102,7 +101,7 @@ class BaseLogger(MutableMapping[str, Any], ABC):
         """Returns steps for a given key."""
         return list(self[key].keys())
 
-    def fill_missing(self, key: str, fill: T.Any = np.nan) -> list[T.Any]:
+    def fill_missing(self, key: str, fill: Any = np.nan) -> list[Any]:
         """Returns a list of values for a given key, filling missing steps with `fill`, so index of each element is it's step."""
         steps = range(self.num_steps())
         existing = self[key]
@@ -171,7 +170,7 @@ class BaseLogger(MutableMapping[str, Any], ABC):
         return logger
 
     def plot(self, *metrics: str, fig = None, **kwargs: Unpack[_K_Line2D]):
-        k: dict[str, T.Any] = kwargs.copy() # type:ignore # this is necesary for pylance to shut up
+        k: dict[str, Any] = kwargs.copy()
         if fig is None: fig = Fig()
         #fig.add()
         ylabel = metrics[0] if len(metrics) == 1 else "value"
@@ -197,7 +196,7 @@ class BaseLogger(MutableMapping[str, Any], ABC):
         if fig is None: fig = Fig()
 
         if ylim is not None:
-            ymin,ymax = [maybe_ensure_pynumber(i) for i in ylim]
+            ymin,ymax = [tofloat(i) if i is not None else None for i in ylim]
             yvals = yvals.copy()
 
             yvals[yvals<ymin] = np.nan

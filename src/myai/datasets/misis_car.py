@@ -1,7 +1,3 @@
-"""15561 images, original was 3×480×640 but I resized to 3×240×320 and saved in float16 so that it fits into memory.
-LOADER IS SET TO CAST TO FLOAT32.
-entire dataset is znormalized per channel.
-10 classes, each image has integer label 0 to 9"""
 import csv
 import itertools
 import os
@@ -11,8 +7,7 @@ import torch
 from torchvision.transforms import v2
 from tqdm import tqdm
 
-from .base import DATASETS_ROOT
-from ..data import DS
+from .base import DATASETS_ROOT, Dataset
 from ..loaders.image import imreadtensor
 from ..torch_tools import pad_to_shape
 
@@ -39,62 +34,67 @@ def _image_to_float32(x):
     return image.to(torch.float32, copy=False), label
 
 
-root = os.path.join(DATASETS_ROOT, "MDS-MISIS-DL Car classification")
+ROOT = os.path.join(DATASETS_ROOT, "MDS-MISIS-DL Car classification")
 
-def _make():
-    """decode all images and stack into a big array + labels array."""
-    with open(os.path.join(root, "train.csv"), 'r', encoding = 'utf8') as f:
-        items = list(csv.reader(f))[1:]
+class MISISCar(Dataset):
+    """
+    inputs: 15,561 images, original was 3×480×640 but I resized to 3×240×320 and saved in float16 so that it fits into memory.
+    Loader is set to convert to float32. Entire dataset is z-normalized per-channel.
 
-    # have to use float16 and resize by 50% to make it fit into memory
-    ds = [(
-        _preprocess(
-            imreadtensor(
-                os.path.join(root, "train", f"{i[1]}", f"{i[0]}"),
-                dtype=torch.float16),
-            ),
-        int(i[1])
-    ) for i in items]
+    targets: 10 classes, each image has int64 label 0 to 9.
+    """
+    def __init__(self, path=ROOT, device=None):
+        super().__init__()
+        self.path = path
 
-    # stack
-    images = torch.stack([i[0] for i in ds])
-    labels = torch.tensor([i[1] for i in ds], dtype=torch.int64)
+        data_path = os.path.join(path, 'train.npz')
+        if os.path.exists(data_path):
+            data = np.load(data_path)
+            images = data['images']
+            labels = data['labels']
 
-    # znorm
-    images -= MEAN
-    images /= STD
+        else:
 
-    return images, labels
+            with open(os.path.join(ROOT, "train.csv"), 'r', encoding = 'utf8') as f:
+                items = list(csv.reader(f))[1:]
 
+            # have to use float16 and resize by 50% to make it fit into memory
+            image_paths = [os.path.join(ROOT, "train", f"{i[1]}", f"{i[0]}") for i in items]
+            images = [_preprocess(imreadtensor(p)) for p in image_paths]
 
-def _save():
-    """save dataset arrays to disk for fast loading."""
-    images, labels = _make()
-    np.savez_compressed(os.path.join(root, 'train 240x320.npz'), images=images, labels = labels)
+            # stack
+            images = torch.stack(images)
+            labels = torch.tensor([int(i[1]) for i in items], dtype=torch.int64)
 
-def get() -> DS[tuple[torch.Tensor, int]]:
-    """returns DS with float32 (3, 240, 320) images and int64 labels 0 to 9."""
-    data = np.load(os.path.join(root, 'train 240x320.npz'))
-    images = data['images']
-    labels = data['labels']
-    ds = DS()
-    ds.add_samples_([(torch.from_numpy(i),
-                        torch.tensor(l, dtype=torch.int64)) for i, l in zip(images, labels)],
-                    loader=_image_to_float32)
-    return ds
+            # znormalize
+            images -= MEAN
+            images /= STD
+
+            # save
+            np.savez_compressed(os.path.join(path, 'train.npz'), images=images, labels=labels)
 
 
-def make_val_submission(outfile, model, batch_size = 32):
-    """make a submission csv"""
-    submission = "Id,Category\n"
-    for ids in itertools.batched(tqdm(os.listdir(os.path.join(root, "test"))), batch_size):
-        inputs = torch.stack([_preprocess(imreadtensor(os.path.join(root, "test", f), dtype=torch.float32)) for f in ids])
+        # add samples
+        samples = [(torch.from_numpy(i).to(device), torch.tensor(l, device=device, dtype=torch.int64)) for i, l in zip(images, labels)]
+        self.add_samples_(samples, loader=_image_to_float32)
+
+
+    def preprocess(self, inputs, device=None):
+        from ..transforms import totensor, to_3HW
+        inputs = torch.stack([_preprocess(to_3HW(totensor(i, device=device, dtype=torch.float32))) for i in inputs])
         inputs -= MEAN
         inputs /= STD
+        return inputs
 
-        outputs = model(inputs)
-        submission += '\n'.join([f'{i},{int(o)}' for i, o in zip(ids, outputs.argmax(1).detach().cpu())])
-        submission += '\n'
+    def make_val_submission(self, fname, model, batch_size = 32):
+        """make a submission csv"""
+        submission = "Id,Category\n"
+        for ids in itertools.batched(tqdm(os.listdir(os.path.join(self.path, "test"))), batch_size):
+            inputs = self.preprocess([os.path.join(self.path, "test", f) for f in ids])
 
-    with open(outfile, 'w', encoding = 'utf8') as f:
-        f.write(submission[:-1])
+            outputs = model(inputs)
+            submission += '\n'.join([f'{i},{int(o)}' for i, o in zip(ids, outputs.argmax(1).detach().cpu())])
+            submission += '\n'
+
+        with open(fname, 'w', encoding = 'utf8') as f:
+            f.write(submission[:-1])

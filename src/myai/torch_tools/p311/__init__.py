@@ -1,5 +1,4 @@
 from .compile import maybe_compile
-from .conversion import *
 from .crop_ import crop, crop_like, crop_to_shape, spatial_crop
 from .deprecated import crop_around
 from .devices import *

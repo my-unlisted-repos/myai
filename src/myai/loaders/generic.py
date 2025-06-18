@@ -1,6 +1,8 @@
+import pickle
 import importlib.util
 import os
 from typing import Any, cast, TYPE_CHECKING
+from collections.abc import Mapping
 
 import numpy as np
 import torch
@@ -42,6 +44,7 @@ def _extract_int_from_str(s: str):
     return int(''.join(c for c in s if c.isnumeric()))
 
 def read(path: str) -> np.ndarray:
+    # ---------------------------------- folder ---------------------------------- #
     if os.path.isdir(path):
         path = path_zoom(path)
 
@@ -54,11 +57,31 @@ def read(path: str) -> np.ndarray:
             return np.stack([read(f) for f in files])
 
     xl = path.lower()
+    # ----------------------------------- nifti ---------------------------------- #
     if xl.endswith(('nii', 'nii.gz')):
         return niiread(path)
 
+    # ----------------------------------- audio ---------------------------------- #
     if xl.endswith(('mp3', 'flac', 'wav', 'ogg', 'aac')):
         return audioread(path)[0]
+
+    # ----------------------------------- numpy ---------------------------------- #
+    if xl.endswith(('npy', 'npz')):
+        arr = np.load(path)
+        if isinstance(arr, Mapping):
+            if len(arr) > 1: raise ValueError(f"{xl} has more than 1 key: {list(arr.keys())}, idk what to load!")
+            return arr[next(iter(arr.keys()))]
+
+        from ..transforms import tonumpy
+        return tonumpy(arr)
+
+    # ---------------------------------- pickle ---------------------------------- #
+    if xl.endswith('pkl'):
+        with open(path, 'rb') as f:
+            arr = pickle.load(f)
+
+        from ..transforms import tonumpy
+        return tonumpy(arr)
 
     return imread(path)
 

@@ -23,7 +23,8 @@ from ..python_tools import (
     make_dict_serializeable,
     to_valid_fname,
 )
-from ..torch_tools import CUDA_IF_AVAILABLE, maybe_ensure_pynumber
+from ..torch_tools import CUDA_IF_AVAILABLE
+from ..transforms import tofloat
 from .callbacks.default import Default
 from .callbacks.scheduler_ import scheduler as _scheduler_cb
 
@@ -49,6 +50,11 @@ def _maybe_add_repr_(d: dict, attr):
     """maybe adds __repr__ to d if attr has a handler"""
     if type(attr) in _extra_type_handlers:
         d['__repr__'] = _extra_type_handlers[type(attr)](attr)
+
+def _maybe_ensure_pynumber(x):
+    if isinstance(x, torch.Tensor): x = x.numpy(force=True)
+    if isinstance(x, np.ndarray) and x.size == 1: return x.item()
+    return x
 
 class Learner(EventModel):
     model: torch.nn.Module | T.Any
@@ -257,7 +263,7 @@ class Learner(EventModel):
         if base == 'logger':
             if attr is None: raise ValueError(f'Invalid template: {s}, {attr} not found in logger')
             if attr in self.logger:
-                v = maybe_ensure_pynumber(self.logger.last(attr))
+                v = _maybe_ensure_pynumber(self.logger.last(attr))
                 if isinstance(v, float): v = f'{v:.4f}'
                 return str(v)
             return ''
@@ -266,7 +272,7 @@ class Learner(EventModel):
         if base == 'date_created': return epoch_to_datetime(self.creation_time).strftime("%Y.%m.%d %H-%M-%S")
         if base == 'datetime': return datetime.now().strftime("%Y.%m.%d %H-%M-%S")
         if base == 'main_metric':
-            v = maybe_ensure_pynumber(self.get_main_metric())
+            v = _maybe_ensure_pynumber(self.get_main_metric())
             if isinstance(v, float): v = f'{v:.4f}'
             return str(v)
         if base == 'prefix':

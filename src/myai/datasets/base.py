@@ -6,7 +6,7 @@ from ..data import DS
 DATASETS_ROOT = '/var/mnt/hdd/Datasets'
 
 class Dataset(DS, ABC):
-    def submission(self, fname, model, *args, **kwargs):
+    def submission(self, *args, **kwargs):
         """makes a submission file, if applicable"""
         raise NotImplementedError(f"{self.__class__.__name__} doesn't implement `make_val_submission`")
 

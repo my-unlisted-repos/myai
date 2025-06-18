@@ -3,8 +3,7 @@ import typing as T
 import numpy as np
 
 from ..python_tools import identity
-from ..torch_tools import ensure_numpy
-from ..transforms import normalize
+from ..transforms import normalize, tonumpy
 
 
 def _log10_norm(x): return np.log10(x)
@@ -28,4 +27,4 @@ _NORMS = {
 def _normalize(value, norm: str | T.Callable | None):
     if isinstance(norm, str) or norm is None: norm_c = _NORMS[norm]
     else: norm_c = norm
-    return norm_c(ensure_numpy(value))
+    return norm_c(tonumpy(value))
