@@ -19,6 +19,7 @@ from ..python_tools import (
     func2method,
     maybe_compose,
 )
+from ..utils import describe
 from ..rng import RNG, Seed
 
 def _numpy_to(array: np.ndarray, dtype):
@@ -114,7 +115,7 @@ class DS(torch.utils.data.Dataset[R]):
         self.samples.append(sample)
         return self
 
-    def _add_sample_objects_(self, samples: Sequence[Sample]):
+    def _add_sample_objects_(self, samples: Iterable[Sample]):
         self.samples.extend(samples)
         return self
 
@@ -123,11 +124,11 @@ class DS(torch.utils.data.Dataset[R]):
         return self
 
     def add_samples_(self, samples: SupportsIter, loader: Composable | None = None, transform: Composable | None = None, call=False):
-        self._add_sample_objects_([Sample(s, loader, transform, call=call) for s in samples])
+        self._add_sample_objects_(Sample(s, loader, transform, call=call) for s in samples)
         return self
 
     def add_dataset_(self, dataset: SupportsLenAndGetitem, loader: Composable | None = None, transform: Composable | None = None):
-        self._add_sample_objects_([Sample(BoundItemGetter(dataset, i), loader, transform, call=True) for i in range(len(dataset))]) # type:ignore
+        self._add_sample_objects_(Sample(BoundItemGetter(dataset, i), loader, transform, call=True) for i in range(len(dataset))) # type:ignore
         return self
 
     def merge_(self, ds: "DS"):
@@ -452,3 +453,7 @@ class DS(torch.utils.data.Dataset[R]):
 
         if mean is None or std is None: raise ValueError('Dataset is empty.')
         return mean / nsamples, std / nsamples
+
+    def describe(self):
+        sample = self[0]
+        return describe(sample)

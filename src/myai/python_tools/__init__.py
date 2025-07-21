@@ -20,6 +20,7 @@ else:
     from .threading_ import *
     from .time import *
     from .types_ import *
+    from .math import *
 
     __all__ = [name for name, thing in globals().items() # type:ignore
             if not (name.startswith('_') or isinstance(thing, types.ModuleType))]

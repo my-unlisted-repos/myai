@@ -95,7 +95,7 @@ def make_ds(dataset: list[MRISlicer] | str, num_classes: int, around: int, any_p
     slices = get_seg_slices(dataset, around = around, any_prob = any_prob)
     if num_classes == 1: transforms = [partial(randcrop2dt, size = window_size), _unsqueeze_x_mask]
     else: transforms = [partial(randcrop2dt, size = window_size), partial(_one_hot_x_mask, num_classes = num_classes)]
-    ds.add_samples_(slices, loader = call, transform=transforms)
+    ds.add_samples_(slices, transform=transforms, call=True)
     return ds
 
 

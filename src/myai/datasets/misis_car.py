@@ -43,15 +43,15 @@ class MISISCar(Dataset):
 
     targets: 10 classes, each image has int64 label 0 to 9.
     """
-    def __init__(self, path=ROOT, device=None):
+    def __init__(self, root=ROOT, device=None):
         super().__init__()
-        self.path = path
+        self.root = root
 
-        data_path = os.path.join(path, 'train.npz')
+        data_path = os.path.join(root, 'train.npz')
         if os.path.exists(data_path):
             data = np.load(data_path)
-            images = data['images']
-            labels = data['labels']
+            images = torch.as_tensor(data['images'], dtype=torch.float16)
+            labels = torch.as_tensor(data['labels'], dtype=torch.int64)
 
         else:
 
@@ -71,12 +71,11 @@ class MISISCar(Dataset):
             images /= STD
 
             # save
-            np.savez_compressed(os.path.join(path, 'train.npz'), images=images, labels=labels)
+            np.savez_compressed(data_path, images=images.numpy(force=True), labels=labels.numpy(force=True))
 
 
         # add samples
-        samples = [(torch.from_numpy(i).to(device), torch.tensor(l, device=device, dtype=torch.int64)) for i, l in zip(images, labels)]
-        self.add_samples_(samples, loader=_image_to_float32)
+        self.add_samples_(zip(images, labels), loader=_image_to_float32)
 
 
     def preprocess(self, inputs, device=None):
@@ -89,8 +88,8 @@ class MISISCar(Dataset):
     def make_val_submission(self, fname, model, batch_size = 32):
         """make a submission csv"""
         submission = "Id,Category\n"
-        for ids in itertools.batched(tqdm(os.listdir(os.path.join(self.path, "test"))), batch_size):
-            inputs = self.preprocess([os.path.join(self.path, "test", f) for f in ids])
+        for ids in itertools.batched(tqdm(os.listdir(os.path.join(self.root, "test"))), batch_size):
+            inputs = self.preprocess([os.path.join(self.root, "test", f) for f in ids])
 
             outputs = model(inputs)
             submission += '\n'.join([f'{i},{int(o)}' for i, o in zip(ids, outputs.argmax(1).detach().cpu())])

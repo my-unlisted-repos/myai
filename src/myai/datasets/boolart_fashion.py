@@ -39,24 +39,24 @@ class BoolArtFashion(Dataset):
     Extremely imbalanced, some classes have 10000 samples and some have a single sample.
     """
 
-    def __init__(self, path=ROOT, device=None):
+    def __init__(self, root=ROOT, device=None):
         super().__init__()
-        self.path = path
+        self.root = root
 
         # load
-        data_path = os.path.join(path, 'train.npz')
+        data_path = os.path.join(root, 'train.npz')
         if os.path.exists(data_path):
             data = np.load(data_path)
-            images = data['images']
-            labels = data['labels']
+            images = torch.as_tensor(data['images'], dtype=torch.float16)
+            labels = torch.as_tensor(data['labels'], dtype=torch.int64)
 
         # make
         else:
-            with open(os.path.join(path, "train.csv"), 'r', encoding = 'utf8') as f:
+            with open(os.path.join(root, "train.csv"), 'r', encoding = 'utf8') as f:
                 items = list(csv.reader(f))[1:]
 
             # load the jpegs
-            image_paths = [os.path.join(path, "train_image", f'{i[0]}.jpg') for i in items]
+            image_paths = [os.path.join(root, "train_image", f'{i[0]}.jpg') for i in items]
             images = [_preprocess(imreadtensor(p)) for p in image_paths]
 
             # stack
@@ -68,13 +68,12 @@ class BoolArtFashion(Dataset):
             images /= STD
 
             # save
-            np.savez_compressed(os.path.join(path, 'train.npz'), images=images, labels=labels)
+            np.savez_compressed(data_path, images=images.numpy(force=True), labels=labels.numpy(force=True))
 
         # add samples
-        samples = [(torch.from_numpy(i).to(device), torch.tensor(l, device=device, dtype=torch.int64)) for i, l in zip(images, labels)]
-        self.add_samples_(samples)
+        self.add_samples_(zip(images, labels))
 
-    def batched_preprocess(self, inputs, device=None):
+    def preprocess(self, inputs, device=None):
         from ..transforms import totensor, to_3HW
         inputs = torch.stack([_preprocess(to_3HW(totensor(i, device=device, dtype=torch.float32))) for i in inputs])
         inputs -= MEAN
@@ -84,8 +83,8 @@ class BoolArtFashion(Dataset):
     def submission(self, fname, model, batch_size = 32, device=None):
         """make a submission csv"""
         submission = "id,predict\n"
-        for ids in itertools.batched(tqdm(os.listdir(os.path.join(self.path, "test_image"))), batch_size):
-            inputs = self.batched_preprocess([os.path.join(self.path, "test_image", f) for f in ids], device=device)
+        for ids in itertools.batched(tqdm(os.listdir(os.path.join(self.root, "test_image"))), batch_size):
+            inputs = self.preprocess([os.path.join(self.root, "test_image", f) for f in ids], device=device)
 
             outputs = model(inputs)
             submission += '\n'.join([f'{i.replace(".jpg", "")},{int(o)}' for i, o in zip(ids, outputs.argmax(1).detach().cpu())])

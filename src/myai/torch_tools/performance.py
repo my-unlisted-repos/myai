@@ -21,7 +21,7 @@ def performance_tweaks(
     # deterministic operations tend to have worse performance than nondeterministic operations
     if deterministic is not None:
         torch.backends.cudnn.deterministic = deterministic
-        torch.use_deterministic_algorithms(False)
+        torch.use_deterministic_algorithms(deterministic)
 
     # Running float32 matrix multiplications in lower precision may significantly increase performance,
     # and in some programs the loss of precision has a negligible impact.

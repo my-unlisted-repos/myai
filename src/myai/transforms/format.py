@@ -14,8 +14,8 @@ def totensor(x:Any, device = None, dtype = None) -> torch.Tensor:
     if isinstance(x, str): x = generic.read(x)
     if generic.is_sitk(x): x = generic.sitk_to_numpy(x)
 
-    if isinstance(x, torch.Tensor): return x.to(device=device, dtype=dtype, copy=False)
-    return torch.as_tensor(np.asarray(x, copy=False), device=device, dtype=dtype)
+    if isinstance(x, torch.Tensor): return x.to(device=device, dtype=dtype)
+    return torch.as_tensor(np.asarray(x), device=device, dtype=dtype)
 
 def tonumpy(x) -> np.ndarray:
     """Converts x to numpy array if it is not already one. If tensor, ensures it is detached and on CPU."""
@@ -24,7 +24,7 @@ def tonumpy(x) -> np.ndarray:
 
     if isinstance(x, np.ndarray): return x
     if isinstance(x, torch.Tensor): return x.detach().cpu().numpy()
-    return np.asarray(x, copy=False)
+    return np.asarray(x)
 
 def tofloat(x) -> float:
     if isinstance(x, torch.Tensor): return float(x.detach().cpu().item())
@@ -165,7 +165,7 @@ def to_numpy_or_none(x: torch.Tensor | np.ndarray | None) -> np.ndarray | None:
     If None, returns None."""
     if x is None: return None
     if isinstance(x, torch.Tensor): return x.detach().cpu().numpy()
-    return np.asarray(x, copy=False)
+    return np.asarray(x)
 
 
 @overload

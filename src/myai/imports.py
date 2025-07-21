@@ -74,9 +74,10 @@ from .python_tools import (
 from .python_tools import SaveSignature as sig
 from .python_tools import printargs as printa
 from .torch_tools import (
+                           count_learnable_params,
                            count_params,
-                           pad,
                            crop,
+                           pad,
                            pad_dim,
                            pad_like,
                            pad_to_shape,
@@ -97,6 +98,7 @@ from .transforms import (
                            totensor,
                            znormalize,
 )
+from .utils.describe_ import describe
 
 CUDA = torch.device('cuda')
 CPU = torch.device('cpu')

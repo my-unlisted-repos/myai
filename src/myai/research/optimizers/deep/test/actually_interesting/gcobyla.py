@@ -41,7 +41,6 @@ class GCOBYLA(Optimizer):
             flat_grad = parameters_to_vector([p.grad for p in params])
 
             # ---- Adaptive noise injection ----
-            param_scale = torch.norm(flat_params).item()
             effective_noise = group['noise_scale'] * min(1.0, group['delta']/group['max_delta'])
             min_grad_norm = max(1e-12, effective_noise * 0.1)
 

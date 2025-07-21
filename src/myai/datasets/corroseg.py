@@ -24,26 +24,23 @@ class CorroSeg(Dataset):
     targets: binary 1×36×36 segmentation masks in int64.
     """
 
-    def __init__(self, path = ROOT):
+    def __init__(self, root = ROOT):
         super().__init__()
-        self.path = path
+        self.root = root
 
         # load
-        data_path = os.path.join(path, 'train.npz')
+        data_path = os.path.join(root, 'train.npz')
         if os.path.exists(data_path):
             data = np.load(data_path)
-            images = data['images']
-            targets = data['targets']
+            images = torch.as_tensor(data['images'], dtype=torch.float32)
+            targets = torch.as_tensor(data['targets'], dtype=torch.int64)
 
         # make
         else:
             raise NotImplementedError("corro-seg should already be made lil bro")
 
         # add samples
-        self.add_samples_([
-            (torch.from_numpy(i).unsqueeze(0), torch.from_numpy(l).to(torch.int64).unsqueeze(0))
-            for i, l in zip(images, targets)
-        ])
+        self.add_samples_(zip(images, targets))
 
     def prepocess(self, inputs):
         from ..transforms import totensor, to_HW
@@ -53,8 +50,8 @@ class CorroSeg(Dataset):
     def submission(self, fname, model, batch_size = 32, threshold = 0, device=None):
         """make a submission csv"""
         submission = f"{_HEADER}\n"
-        for ids in itertools.batched(tqdm(os.listdir(os.path.join(self.path, "test"))), batch_size):
-            inputs = torch.stack([torch.from_numpy(np.load(os.path.join(self.path, "test", f))) for f in ids]).unsqueeze(1)
+        for ids in itertools.batched(tqdm(os.listdir(os.path.join(self.root, "test"))), batch_size):
+            inputs = torch.stack([torch.from_numpy(np.load(os.path.join(self.root, "test", f))) for f in ids]).unsqueeze(1)
 
             outputs = model(_corro_normalize(inputs).to(device))
             outputs = outputs > threshold
