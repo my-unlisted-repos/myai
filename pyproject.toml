@@ -1,26 +1,13 @@
 [build-system]
-requires = ["setuptools >= 61.0"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "myai"
-description = "i"
-
-version = "1"
-# dependencies = ["numpy"]
-requires-python = ">= 3.11"
-readme = "README.md"
-authors = [
-  {name = "Ivan Nikishev", email = "nkshv2@gmail.com"},
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
 ]
-license = {file = "LICENSE"}
-# keywords = ["my", "ai"]
 
-
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.pytest.ini_options]
-addopts = [
-    "--import-mode=importlib",
-]
+[tool.setuptools.packages]
+find = {}  # Scanning implicit namespaces is active by default
